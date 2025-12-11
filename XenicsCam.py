@@ -8,6 +8,9 @@ import numpy as np
 
 import time
 
+import logging
+_log = logging.getLogger('XenicsCam')
+
 from xenics.xeneth import *
 from xenics.xeneth import discovery, XDeviceStates
 from xenics.xeneth.errors import XenethAPIException
@@ -64,7 +67,7 @@ class XENICSCAM:
         try:
             devices = discovery.enumerate_devices()
             if len(devices) == 0:
-                print("No devices found")
+                _log.error("No devices found")
                 return
 
             states = {XDeviceStates.XDS_Available : "Available",
@@ -75,13 +78,13 @@ class XENICSCAM:
             self.url = dev.url
             self.dev = dev
 
-            print(f"Device[{idx}] {dev.name} @ {dev.address} ({dev.transport})")
-            print(f"URL: {dev.url}")
-            print(f"State: {states[dev.state]} ({dev.state})\n")
+            _log.info(f"Device[{idx}] {dev.name} @ {dev.address} ({dev.transport})")
+            _log.info(f"URL: {dev.url}")
+            _log.info(f"State: {states[dev.state]} ({dev.state})\n")
             return     
            
         except XenethAPIException as e:
-            print(f"Error occurred during device discovery: {e.message}")
+            _log.error(f"Error occurred during device discovery: {e.message}")
         return
 
     def open(self):
@@ -99,19 +102,19 @@ class XENICSCAM:
             self.cam = XCamera()
             self.cam.open(self.url)
             if self.cam.is_initialized:
-                print("Checking camera temperature")
+                _log.debug("Checking camera temperature")
                 temp = self.cam.get_property_value("Temperature")
                 while temp > TEMP_LIM:
                     temp = self.cam.get_property_value("Temperature")
-                    print ("CCD is cooling down...Please wait a few moments")
+                    _log.info("CCD is cooling down...Please wait a few moments")
                     time.sleep(5)
-                print("CCD is cold! Now available to take images!")
+                _log.info("CCD is cold! Now available to take images!")
                 self.cam.start_capture()
                 return
             else:
-                print("Initialization failed")  
+                _log.error("Initialization failed")  
         except XenethAPIException as e:
-            print(e.message)   
+            _log.error(e.message)   
         return
 
     def take_image(self, navg=NAVG, filename=False):
@@ -147,7 +150,7 @@ class XENICSCAM:
         x = np.linspace(-x_dim/2 * PIXEL_SIZE, (x_dim/2 - 1) * PIXEL_SIZE, x_dim)
         y = np.linspace(-y_dim/2 * PIXEL_SIZE,(y_dim/2 - 1) * PIXEL_SIZE, y_dim)
         if filename:
-            print(filename)
+            _log.debug(filename)
             np.savetxt(filename, data, delimiter=",")
         return x, y, data, timestamp
     
@@ -164,10 +167,10 @@ class XENICSCAM:
             None
         '''
         t_exp_current = self.cam.get_property_value('IntegrationTime')
-        print("Exposure time was " + str(t_exp_current) + " μs")
+        _log.debug("Exposure time was " + str(t_exp_current) + " μs")
         self.cam.set_property_value('IntegrationTime', t_exp)
         t_exp_new = self.cam.get_property_value('IntegrationTime')
-        print("Exposure time is now " + str(t_exp_new) + " μs")
+        _log.debug("Exposure time is now " + str(t_exp_new) + " μs")
         return
         
     def close(self):
@@ -184,11 +187,11 @@ class XENICSCAM:
         if self.cam.is_capturing:
             try:
                 self.cam.stop_capture()
-                print("Stopped streaming frames!")
+                _log.deug("Stopped streaming frames!")
                 self.cam.close()
-                print("Camera closed!")
+                _log.debug("Camera closed!")
             except XenethAPIException as e:
-                print(e.message)
+                _log.error(e.message)
         return
     
     @property

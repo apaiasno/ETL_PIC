@@ -6,6 +6,9 @@
 import numpy as np
 import time
 
+import logging
+_log = logging.getLogger('Zaber')
+
 from zaber_motion import Units, UnitTable
 from zaber_motion.ascii import Connection
 
@@ -51,7 +54,7 @@ class ZABER:
         self.connection = Connection.open_serial_port(com_port)
         self.connection.enable_alerts()
         self.devices = self.connection.detect_devices()
-        print("Found {} devices".format(len(self.devices)))
+        _log.info("Found {} devices".format(len(self.devices)))
         return
     
     def home(self, device_ind):
@@ -69,11 +72,11 @@ class ZABER:
         device = self.devices[device_ind]
         axis = device.get_axis(1)
         if not axis.is_homed():
-            print(f"Homing device {device_ind}...")
+            _log.info(f"Homing device {device_ind}...")
             axis.home()
-            print(f"Done homing device {device_ind}.")
+            _log.info(f"Done homing device {device_ind}.")
         else:
-             print(f"Device {device_ind} is already homed.")
+             _log.info(f"Device {device_ind} is already homed.")
         return
     
     def get_positions(self, unit=UNIT, print_flag=False):
@@ -96,8 +99,8 @@ class ZABER:
             position = axis.get_position(unit=unit)
             positions.append(position)
         if print_flag:
-            print("Positions:")
-            [print(f"Device {device_ind}: {position} {UnitTable.get_symbol(unit)}") for device_ind, position in enumerate(positions)];
+            _log.info("Positions:")
+            [_log.info(f"Device {device_ind}: {position} {UnitTable.get_symbol(unit)}") for device_ind, position in enumerate(positions)];
         return np.array(positions)
     
     def move_absolute(self, device_ind, position, unit=UNIT, velocity=0, velocity_unit=UNIT_VELOCITY):
@@ -128,7 +131,7 @@ class ZABER:
         previous = self.positions[device_ind]
 
         # Move device, overshooting for anti-backlash if moving backwards
-        print(f"Moving device {device_ind}...")
+        _log.debug(f"Moving device {device_ind}...")
         if (position < previous): # anti-backlash
             try:
                 axis.move_absolute(position-BACKLASH_OVERSHOOT, self.unit, velocity=velocity, velocity_unit=velocity_unit)
@@ -139,7 +142,7 @@ class ZABER:
             axis.move_absolute(position, self.unit, velocity=velocity, velocity_unit=velocity_unit)
 
         new = self.positions[device_ind]        
-        print(f"Done moving device {device_ind} from {UnitTable.convert_units(previous, self.unit, unit)} {UnitTable.get_symbol(unit)} to {UnitTable.convert_units(new, self.unit, unit)} {UnitTable.get_symbol(unit)}.")
+        _log.debug(f"Done moving device {device_ind} from {UnitTable.convert_units(previous, self.unit, unit)} {UnitTable.get_symbol(unit)} to {UnitTable.convert_units(new, self.unit, unit)} {UnitTable.get_symbol(unit)}.")
         return
     
     def move_relative(self, device_ind, position, unit=UNIT, velocity=0, velocity_unit=UNIT_VELOCITY):
@@ -170,7 +173,7 @@ class ZABER:
         previous = self.positions[device_ind]
         
         # Move device, overshooting for anti-backlash if moving backwards
-        print(f"Moving device {device_ind}...")
+        _log.debug(f"Moving device {device_ind}...")
         if (position < previous): # anti-backlash
             try:
                 axis.move_relative(position-BACKLASH_OVERSHOOT, self.unit, velocity=velocity, velocity_unit=velocity_unit)
@@ -181,7 +184,7 @@ class ZABER:
             axis.move_relative(position, self.unit, velocity=velocity, velocity_unit=velocity_unit)
         
         new = self.positions[device_ind]
-        print(f"Done moving device {device_ind} from {UnitTable.convert_units(previous, self.unit, unit)} {UnitTable.get_symbol(unit)} to {UnitTable.convert_units(new, self.unit, unit)} {UnitTable.get_symbol(unit)}.")
+        _log.debug(f"Done moving device {device_ind} from {UnitTable.convert_units(previous, self.unit, unit)} {UnitTable.get_symbol(unit)} to {UnitTable.convert_units(new, self.unit, unit)} {UnitTable.get_symbol(unit)}.")
         return
         
     # def move_velocity(self, device_ind, position, velocity, wait, unit=UNIT, unit_velocity=UNIT_VELOCITY):
@@ -211,7 +214,7 @@ class ZABER:
     #     previous = self.positions[device_ind]
     #     axis = self.devices[device_ind].get_axis(1)           
         
-    #     print(f"Moving device {device_ind}...")
+    #     _log.debug(f"Moving device {device_ind}...")
     #     tracker = 0
     #     if velocity > 0:
     #         axis.move_velocity(velocity, unit_velocity)
@@ -219,7 +222,7 @@ class ZABER:
     #             time.sleep(wait)
     #             tracker += 1
     #             if tracker == 10:
-    #                 print(f"Device {device_ind}: {self.positions[device_ind]} {unit.name}")
+    #                 _log.debug(f"Device {device_ind}: {self.positions[device_ind]} {unit.name}")
     #                 tracker = 0
     #         axis.stop()
     #     elif velocity < 0:
@@ -228,14 +231,14 @@ class ZABER:
     #             time.sleep(wait)
     #             tracker += 1
     #             if tracker == 10:
-    #                 print(f"Device {device_ind}: {self.positions[device_ind]} {unit.name}")
+    #                 _log.debug(f"Device {device_ind}: {self.positions[device_ind]} {unit.name}")
     #                 tracker = 0
     #         axis.stop()
     #     else:
     #         raise ValueError(f"Inputs must be a nonzero, real value. Received: {position} {unit.name}, {velocity} {unit_velocity.name}")
         
     #     new = self.positions[device_ind]
-    #     print(f"Done moving device {device_ind} from {previous} {self.unit.name} to {new} {self.unit.name}.")
+    #     _log.debug(f"Done moving device {device_ind} from {previous} {self.unit.name} to {new} {self.unit.name}.")
     #     return
 
             # # Move by an additional 5mm
@@ -253,7 +256,7 @@ class ZABER:
             None        
         '''
         self.connection.close()
-        print('Connection to Zabers closed.')
+        _log.info('Connection to Zabers closed.')
         return
 
     @property
