@@ -108,7 +108,8 @@ def find_focus(mask_region, step, tlx, zaber, cam, num_iter=20, step_unit=UNIT, 
     print(f"Final change in metric from start: {metric/metric_first * 100:0.2f}%")
     return zaber
 
-def voltage_scan(channels, ind_null, voltages, outputs_masks, filename_root, cam, xpow, tlx, navg=NAVG, dark_frame=None, dark_threshhold=3, bright_threshhold=10000, delta_VOA=3):
+def voltage_scan(channels, ind_null, voltages, outputs_masks, filename_root, cam, xpow, tlx, navg=NAVG, dark_frame=None, 
+                 dark_threshhold=3, bright_threshhold=10000, null_VOA=1, bright_VOA=20):
     ''' Performs a voltage scan over multiple active components with the power meter. Saves each image and the hardware settings to a table.
 
         Parameters
@@ -152,14 +153,25 @@ def voltage_scan(channels, ind_null, voltages, outputs_masks, filename_root, cam
 
     assert np.min(voltagecombos) >= 0, "voltage should be non-negative"
     assert np.max(voltagecombos) < MAXVOLTAGE, "exceeds max voltage allowed"
+    
+    # Set up mask for stripe removal
+    mask_stripes = outputs_masks.sum(axis=0)
+    inds = np.argwhere(mask_stripes==True)
+    inds_rows = list(set(inds[:,0]))
+    ind_min, ind_max = np.min(inds_rows), np.max(inds_rows)
+    inds_rows = np.arange(ind_min - 2*(ind_max-ind_min), ind_max + 2*(ind_max-ind_min))
+    for ind in inds_rows:
+        mask_stripes[ind,:] = True
 
     dats = []
-    for voltages in voltagecombos:
+    outputs_bright = np.empty((len(outputs_masks), *[len(voltage) for voltage in voltages[::-1]]))
+    outputs_null = np.empty((len(outputs_masks), *[len(voltage) for voltage in voltages[::-1]]))
+    for voltagecombo in voltagecombos:
         table_row = []
         channel_str = f''
 
         # Set XPOW
-        for i, voltage in enumerate(voltages):
+        for i, voltage in enumerate(voltagecombo):
             # Set XPOW
             xpow.apply_voltage(channels[i], voltage)
             time.sleep(XPOW_DELAY)
@@ -172,8 +184,15 @@ def voltage_scan(channels, ind_null, voltages, outputs_masks, filename_root, cam
         
         # Take bright image
         ### Add temperature if we can stream that info ###
-        filename = filename_root + f"{channel_str}.csv"
-        x, y, data, timestamp = cam.take_image(navg=navg, filename=filename)
+        filename = filename_root + f"{channel_str}_bright.csv"
+        tlx.set_voa(bright_VOA)
+        x, y, data_bright, timestamp = cam.take_image(navg=navg, filename=filename)
+        dats.append(np.hstack([1, tlx.voa, table_row, timestamp]))
+
+        # Take null image
+        filename = filename_root + f"{channel_str}_null.csv"
+        tlx.set_voa(null_VOA)
+        x, y, data_null, timestamp = cam.take_image(navg=navg, filename=filename)
         dats.append(np.hstack([1, tlx.voa, table_row, timestamp]))
 
         # Take dark image
@@ -188,46 +207,53 @@ def voltage_scan(channels, ind_null, voltages, outputs_masks, filename_root, cam
         else:
             dark = np.copy(dark_frame)
 
-        # Subtract stripes
-        mask_stripes = outputs_masks.sum(axis=0)
-        inds = np.argwhere(mask_stripes==True)
-        inds_rows = list(set(inds[:,0]))
-        ind_min, ind_max = np.min(inds_rows), np.max(inds_rows)
-        inds_rows = np.arange(ind_min - 2*(ind_max-ind_min), ind_max + 2*(ind_max-ind_min))
-        for ind in inds_rows:
-            mask_stripes[ind,:] = True
-
-        data_stripes, dark_stripes = np.copy(data), np.copy(dark)
-        data_stripes[mask_stripes] = np.nan
+        data_bright_stripes, data_null_stripes, dark_stripes = np.copy(data_bright), np.copy(data_null), np.copy(dark)
+        data_bright_stripes[mask_stripes] = np.nan
+        data_null_stripes[mask_stripes] = np.nan
         dark_stripes[mask_stripes] = np.nan
 
-        data = data - np.nanmean(data_stripes, axis=0)
+        data_bright = data_bright - np.nanmean(data_bright_stripes, axis=0)
+        data_null = data_null - np.nanmean(data_null_stripes, axis=0)
         dark = dark - np.nanmean(dark_stripes, axis=0)
+        
+        data_reduce_bright = data_bright - dark
+        data_reduce_null = data_bright - dark
 
         # Report intensities
-        intensities = []
+        intensities_bright = []
+        intensities_null = []
         for mask in outputs_masks:
-            intensities.append(np.sum(data[mask] - dark[mask]))
-        print("Output intensities: ", intensities)
+            intensities_bright.append(np.sum(data_reduce_bright[mask]))
+            intensities_null.append(np.sum(data_reduce_null[mask]))
+        print("Bright VOA output intensities: ", intensities_bright)
+        print("Null VOA output intensities: ", intensities_null)
         print("\n")
 
-        # Dark threshhold condition
-        null_bright = np.max(data[outputs_masks[ind_null]] - dark[outputs_masks[ind_null]])
-        null_dark = np.std(dark[outputs_masks[ind_null]])
-        if null_bright/null_dark < dark_threshhold:
-            if tlx.voa - delta_VOA > VOA_MIN:
-                tlx.set_voa(tlx.voa - delta_VOA)
-            else:
-                tlx.set_voa(VOA_MIN)
-        else:
-            # Bright threshhold condition
-            for mask in outputs_masks:
-                if np.max(data[mask]) > bright_threshhold:
-                    if tlx.voa + delta_VOA < VOA_MAX:
-                        tlx.set_voa(tlx.voa + delta_VOA)
-                    else:
-                        tlx.set_voa(VOA_MAX)
-                    break        
+        for i, mask in enumerate(outputs_masks):
+            inds = []
+            for j, v in enumerate(voltagecombo[::-1]):
+                inds.append(np.argmin(np.abs(voltages[::-1][j] - v)))
+            inds = tuple([i] + inds)
+            outputs_bright[inds] = np.sum(data_reduce_bright[mask]) * 10**((bright_VOA-20) / 10)
+            outputs_null[inds] = np.sum(data_reduce_null[mask]) * 10**((null_VOA-20) / 10)
+
+        # # Dark threshhold condition
+        # null_bright = np.max(data[outputs_masks[ind_null]] - dark[outputs_masks[ind_null]])
+        # null_dark = np.std(dark[outputs_masks[ind_null]])
+        # if null_bright/null_dark < dark_threshhold:
+        #     if tlx.voa - delta_VOA > VOA_MIN:
+        #         tlx.set_voa(tlx.voa - delta_VOA)
+        #     else:
+        #         tlx.set_voa(VOA_MIN)
+        # else:
+        #     # Bright threshhold condition
+        #     for mask in outputs_masks:
+        #         if np.max(data[mask]) > bright_threshhold:
+        #             if tlx.voa + delta_VOA < VOA_MAX:
+        #                 tlx.set_voa(tlx.voa + delta_VOA)
+        #             else:
+        #                 tlx.set_voa(VOA_MAX)
+        #             break        
         
 
     # Construct filename extension and table header for data log
@@ -242,7 +268,9 @@ def voltage_scan(channels, ind_null, voltages, outputs_masks, filename_root, cam
     y_filename = filename_root + channel_str + '_y.csv'
     np.savetxt(output_filename, dats, header=header_str, delimiter=",")
     np.savetxt(x_filename, x, delimiter=",")
-    np.savetxt(y_filename, y, delimiter=",")    
+    np.savetxt(y_filename, y, delimiter=",")   
+    np.save(filename_root + channel_str+'_outputsBright.npy', outputs_bright) 
+    np.save(filename_root + channel_str+'_outputsNull.npy', outputs_bright) 
     return np.array(dats)
 
 def optimize_null(initial_voltages, channels, outputs_masks, ind_null, cam, xpow, dark_frame=None):
@@ -481,23 +509,21 @@ def optimize_null_twoAtten(initial_voltages, channels, outputs_masks, ind_null, 
 
 ### Data reduction routines ###
 
-def build_output_mask(filename_root, voltages_ref, num_outputs, filename_dark=None, mask_range=2, filt_size=5):
+def build_output_mask(frame, num_outputs, mask_range=2, filt_size=5, plot=True):
     ''' Builds a collection of boolean masks identifying each output in the reference image.
     
         Parameters
         ----------
-        filename_root : str
-            Path and beginning identifier of each file in image collection for which the outputs masks are being constructed
-        voltages_ref : list of floats
-            Voltages of image to use as reference for building a mask
+        frame : 2D numpy array
+            Image data
         num_outputs : int
             Number of outputs to identify in reference image
-        filename_dark : None or str
-            If None, uses voltage-specific filename for reading dark image; else uses provided string as dark filename
         mask_range : int
             Mask width and height ranges from +/- mask_range (in pixels) around center of output. Default: 2
         filt_size : int
             Size of maximum filter (in pixels) for isolating local maxima to identify outputs. Default: 5
+        plot : boolean
+            Flag for plotting masks overlayed on image
 
         Returns
         -------
@@ -505,63 +531,80 @@ def build_output_mask(filename_root, voltages_ref, num_outputs, filename_dark=No
             Collection of 2D boolean masks for each output in reference image    
     '''
 
-    filename_log = glob.glob(filename_root+"*.log")[0]
-    channel_str = filename_log.split(filename_root+'_')[-1].split('.log')[0]
-    channel_str = channel_str.split('_')
-    channels = [int(channel.split('Ch')[-1]) for channel in channel_str]
+    # filename_log = glob.glob(filename_root+"*.log")[0]
+    # channel_str = filename_log.split(filename_root+'_')[-1].split('.log')[0]
+    # channel_str = channel_str.split('_')
+    # channels = [int(channel.split('Ch')[-1]) for channel in channel_str]
 
-    v_str = ''
-    for i in range(len(channels)):
-        v_i = f"{voltages_ref[i]:.2f}".replace('.', 'p')
-        v_str += f"*_V{v_i}"
-    filename_ref = glob.glob(filename_root + v_str + ".csv")[0]
-
-    # Read in data
-    data = np.loadtxt(filename_ref, delimiter=',')
-    if filename_dark is None:
-        filename_dark = filename_ref.split('.csv')[0] + '_dark.csv'
-        dark = np.loadtxt(filename_dark, delimiter=',')
-    else:
-        dark = np.loadtxt(filename_dark, delimiter=',')
-    data_reduce = data - dark
-    x = np.loadtxt(glob.glob(filename_root+"*_x.csv")[0], delimiter=',')
-    y = np.loadtxt(glob.glob(filename_root+"*_y.csv")[0], delimiter=',')
+    # v_str = ''
+    # for i in range(len(channels)):
+    #     v_i = f"{voltages_ref[i]:.2f}".replace('.', 'p')
+    #     v_str += f"*_V{v_i}"
+    # filename_ref = glob.glob(filename_root + v_str + ".csv")[0]
 
     # Determine coordinates of outputs
-    filtered = scipy.ndimage.maximum_filter(data_reduce, size=filt_size)
-    mask = (data_reduce == filtered)
+    filtered = scipy.ndimage.maximum_filter(frame, size=filt_size)
+    mask = (frame == filtered)
     coords = np.column_stack(np.nonzero(mask))
-    coords = coords[np.argsort(data_reduce[coords[:,0], coords[:,1]])][-num_outputs:]
+    coords = coords[np.argsort(frame[coords[:,0], coords[:,1]])][-num_outputs:]
     coords = coords[np.argsort(coords[:, 1])] # important to sort in ABCDE order
 
     # Make 2D masks of the outputs
     outputs_masks = []
     for coord in coords:
-        mask = np.zeros_like(data, dtype=bool)
+        mask = np.zeros_like(frame, dtype=bool)
         mask[coord[0]-mask_range:coord[0]+mask_range+1, coord[1]-mask_range:coord[1]+mask_range+1] = True 
         outputs_masks.append(mask)
 
     # Plot the reference data with the output mask
-    yellow_cmap = ListedColormap(['yellow'])
-    vmax = 3000
+    if plot:
+        yellow_cmap = ListedColormap(['yellow'])
+        y_dim, x_dim = np.shape(frame)
 
-    fig, ax = plt.subplots(1, 1, figsize=(10,6))
-    cbar_norm = colors.Normalize(vmin=0, vmax=vmax)  
+        fig, ax = plt.subplots(1, 1, figsize=(10,6))
+        im = ax.pcolormesh(frame, zorder=0)
+        for mask in outputs_masks:
+            masked_overlay = np.ma.masked_where(~mask, np.ones_like(mask))
+            ax.pcolormesh(masked_overlay, cmap=yellow_cmap, alpha=0.2, zorder=1)
+        fig.colorbar(im, ax=ax, fraction=0.05*y_dim/x_dim)
+        ax.set_xlabel('x (pixels)', fontsize=18)
+        ax.set_ylabel('y (pixels)', fontsize=18)
+        ax.set_aspect('equal')
+        plt.show()
 
-    data_reduce = data - dark
-    cbar_norm = colors.Normalize(vmin=0, vmax=vmax)
-    im = ax.pcolormesh(x, y, data_reduce, norm=cbar_norm, zorder=0)
-    for mask in outputs_masks:
-        masked_overlay = np.ma.masked_where(~mask, np.ones_like(mask))
-        ax.pcolormesh(x, y, masked_overlay, cmap=yellow_cmap, alpha=0.2, zorder=1)
-    fig.colorbar(im, ax=ax, fraction=0.05*len(y)/len(x))
-    ax.set_xlabel('x (microns)', fontsize=18)
-    ax.set_ylabel('y (microns)', fontsize=18)
-    ax.set_title('Data - Dark')
-    ax.set_aspect('equal')
-    plt.show()
+    return np.array(outputs_masks)
 
-    return outputs_masks
+def remove_stripes(frame, outputs_masks=None):
+    ''' Removes stripes from Xenics camera images.
+
+        Parameters
+        ----------
+        frame : 2D numpy array
+            Image data
+        outputs_masks : None or 3D numpy array
+            Collection of 2D boolean masks for each output in reference image
+
+        Returns
+        -------
+        frame_reduced : 2D numpy array
+            Image data with stripes removed
+    '''
+    if outputs_masks is not None:
+        mask_stripes = np.sum(outputs_masks, axis=0)
+        inds = np.argwhere(mask_stripes==True)
+        inds_rows = list(set(inds[:,0]))
+        ind_min, ind_max = np.min(inds_rows), np.max(inds_rows)
+        inds_rows = np.arange(ind_min - 2*(ind_max-ind_min), ind_max + 2*(ind_max-ind_min))
+        for ind in inds_rows:
+            mask_stripes[ind,:] = True
+
+        frame_stripes = np.copy(frame)
+        frame_stripes[mask_stripes] = np.nan
+    else:
+        frame_stripes = np.copy(frame)
+
+    frame_reduced = frame - np.nanmean(frame_stripes, axis=0)
+    return frame_reduced
 
 def extract_outputs(filename_root, outputs_masks, filename_dark=None):
     ''' Builds a collection of boolean masks identifying each output in the reference image.
@@ -608,6 +651,7 @@ def extract_outputs(filename_root, outputs_masks, filename_dark=None):
         print(f"Output {output_i}...")
         output = []
         for coord in coords:
+            print(coord)
             v_str = ''
             for i in range(len(channels)):
                 v_i = f"{coord[i]:.2f}".replace('.', 'p')
@@ -648,5 +692,5 @@ def extract_outputs(filename_root, outputs_masks, filename_dark=None):
         output = np.array(output)
         output = output.reshape(shape)
         outputs.append(output)
-            
+    outputs = np.array(outputs).T            
     return voltages, outputs

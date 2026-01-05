@@ -8,6 +8,7 @@ import time
 
 COM_PORT = 'COM1'
 dict_status = {'1\r': 'on', '0\r': 'off'}
+VOA_MAX, VOA_MIN = 20, 1
 
 class TLX:
 
@@ -27,6 +28,8 @@ class TLX:
         '''
         if open:
             self.open(com_port)
+            self.voa_on()
+            self.set_voa(VOA_MAX)
         return
             
     def open(self, com_port):
@@ -118,6 +121,22 @@ class TLX:
         resp = self.send_command('LASer:POWer?')
         resp = dict_status[resp]
         return resp
+    
+    def voa_on(self):
+        ''' Turns VOA on.
+
+            Parameters
+            ----------
+            None
+
+            Returns
+            -------
+            None
+        '''
+        resp = self.send_command("VOA:POWer: 1")
+        time.sleep(1)
+        print(f"VOA set to {self.voa} dB.")
+        return
 
     def set_voa(self, atten):
         ''' Sets laser attenuation.
@@ -134,7 +153,7 @@ class TLX:
         '''
         if (atten >= 0.5) * (atten <= 20):
             resp = self.send_command(f"VOA:ATTen: {atten}")
-            time.sleep(0.5)
+            time.sleep(1)
             print(f"VOA set to {self.voa} dB.")
         else:
             raise ValueError(f"Attenuation must be between 0.5 and 20. Received: {atten}.")

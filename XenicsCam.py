@@ -114,7 +114,7 @@ class XENICSCAM:
             print(e.message)   
         return
 
-    def take_image(self, navg=NAVG, filename=False):
+    def take_image(self, navg=NAVG, filename=False, stack=True):
         ''' Captures an image.
         
             Parameters
@@ -123,32 +123,41 @@ class XENICSCAM:
                 Number of frames to average together. Default: NAVG.
             filename : False or str
                 Filename to save image; if False, doesn't save image.
+            stack : boolean
+                If True, mean-stack all navg frames; else, don't combine frames.
 
             Returns
             -------
             x, y : 1D numpy arrays
                 Image x- and y-axis in microns.
-            data : 2D numpy array
-                Image data averaged over all frames.
-            timestamp : float
-                Average timestamp (seconds since UNIX epoch) across all frames.
+            data : numpy array
+                Image data averaged over all frames if stack == True; else, collection of all frames.
+            timestamp : float or numpy array
+                Average timestamp (seconds since UNIX epoch) across all frames if stack == True; else, collection 
+                of timestamps for each frame.
         '''
         data = []
-        timestamps = []
+        timestamp = []
         for i in range(navg):
             buffer = self.cam.create_buffer()
             if self.cam.get_frame(buffer, flags=XGetFrameFlags.XGF_Blocking):
                 data.append(buffer.image_data)
-            timestamps.append(time.time())
-        data = np.nanmean(data, axis=0)
-        timestamp = np.mean(timestamps)
-        
-        y_dim, x_dim = np.shape(data)
+            timestamp.append(time.time())
+        data, timestamp = np.array(data), np.array(timestamp)
+        y_dim, x_dim = np.shape(data[0])
         x = np.linspace(-x_dim/2 * PIXEL_SIZE, (x_dim/2 - 1) * PIXEL_SIZE, x_dim)
         y = np.linspace(-y_dim/2 * PIXEL_SIZE,(y_dim/2 - 1) * PIXEL_SIZE, y_dim)
+
+        if stack:
+            data = np.nanmean(data, axis=0)
+            timestamp = np.mean(timestamp)
+                
         if filename:
-            print(filename)
-            np.savetxt(filename, data, delimiter=",")
+            if stack:
+                print(filename)
+                np.savetxt(filename, data, delimiter=",")
+            else:
+                np.save(filename, data)
         return x, y, data, timestamp
     
     def set_exposure(self, t_exp=T_EXP):

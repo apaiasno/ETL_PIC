@@ -19,6 +19,8 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
+ATTEN_CHANNEL = 39
+ATTEN_MAXVOLTAGE = 5
 XPOWPorts = ["COM4", "COM6", "COM8"] # change based on device manager
 XPOWBaudRate = 115200
 XPOWVoltageMax = 17
@@ -83,6 +85,8 @@ class XPOW:
             -------
             None
         '''
+        if (channel == ATTEN_CHANNEL) and (voltage > ATTEN_MAXVOLTAGE):
+            raise ValueError(f'Voltage applied to optical attenuator cannot exceed 5 V. Received: {voltage} V')
         XPOW._XPOWChannelAdjust(channel, voltage)
         print(f"Channel {channel} set to {voltage} V.")
         return
