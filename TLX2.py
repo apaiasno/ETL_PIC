@@ -6,6 +6,9 @@
 import serial
 import time
 
+import logging
+_log = logging.getLogger('TLX2')
+
 COM_PORT = 'COM1'
 dict_status = {'1\r': 'on', '0\r': 'off'}
 VOA_MAX, VOA_MIN = 20, 1
@@ -52,7 +55,7 @@ class TLX:
                     stopbits=serial.STOPBITS_ONE,
                     timeout=3         # seconds
                 )
-        print('Connected to TLX2 laser.')
+        _log.info('Connected to TLX2 laser.')
         return
     
     def send_command(self, cmd):
@@ -87,7 +90,7 @@ class TLX:
         '''
         resp = self.send_command('LASer:POWer: 1')
         time.sleep(3)
-        print(f"Laser set to {self.laser_status()}. VOA is {self.voa}.")
+        _log.debug(f"Laser set to {self.laser_status()}. VOA is {self.voa}.")
         return
 
     def laser_off(self):
@@ -103,7 +106,7 @@ class TLX:
         '''
         resp = self.send_command('LASer:POWer: 0')
         time.sleep(1.5)
-        print(f"Laser set to {self.laser_status()}.")
+        _log.debug(f"Laser set to {self.laser_status()}.")
         return
 
     def laser_status(self):
@@ -154,7 +157,7 @@ class TLX:
         if (atten >= 0.5) * (atten <= 20):
             resp = self.send_command(f"VOA:ATTen: {atten}")
             time.sleep(1)
-            print(f"VOA set to {self.voa} dB.")
+            _log.debug(f"VOA set to {self.voa} dB.")
         else:
             raise ValueError(f"Attenuation must be between 0.5 and 20. Received: {atten}.")
         return
@@ -172,7 +175,7 @@ class TLX:
         '''
         self.laser_off()
         self.ser.close()
-        print('Connection to TLX2 laser closed.')
+        _log.info('Connection to TLX2 laser closed.')
         return
 
     @property

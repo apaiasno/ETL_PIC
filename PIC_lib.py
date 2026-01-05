@@ -9,10 +9,14 @@ import matplotlib.colors as colors
 from matplotlib.colors import ListedColormap
 import scipy.ndimage
 
+import logging
+_log = logging.getLogger('PIC_lib')
+
 import glob, time
 
 from Zaber import UNIT, UNIT_VELOCITY
 from XenicsCam import NAVG, T_EXP
+
 
 MAXVOLTAGE = 13
 XPOW_DELAY = 1 # seconds
@@ -89,7 +93,7 @@ def find_focus(mask_region, step, tlx, zaber, cam, num_iter=20, step_unit=UNIT, 
     metric = np.sum(data_reduce[np.argsort(data_reduce)[-5:]])
     metric_prior, metric_first = np.copy(metric), np.copy(metric)
     device_ind = CAM_FOCUS
-    print('Starting metric:', metric)
+    _log.info('Starting metric:', metric)
 
     for i in range(20):
         zaber.move_relative(device_ind, step)
@@ -100,12 +104,12 @@ def find_focus(mask_region, step, tlx, zaber, cam, num_iter=20, step_unit=UNIT, 
 
         if metric < metric_prior:
             step = -0.8 * step
-        print('Change in metric:', metric - metric_prior)
+        _log.info('Change in metric:', metric - metric_prior)
         metric_prior = np.copy(metric)
-        print('\n')
+        _log.info('\n')
 
-    print("Final metric: ", metric)
-    print(f"Final change in metric from start: {metric/metric_first * 100:0.2f}%")
+    _log.info("Final metric: ", metric)
+    _log.info(f"Final change in metric from start: {metric/metric_first * 100:0.2f}%")
     return zaber
 
 def voltage_scan(channels, ind_null, voltages, outputs_masks, filename_root, cam, xpow, tlx, navg=NAVG, dark_frame=None, 
@@ -225,9 +229,9 @@ def voltage_scan(channels, ind_null, voltages, outputs_masks, filename_root, cam
         for mask in outputs_masks:
             intensities_bright.append(np.sum(data_reduce_bright[mask]))
             intensities_null.append(np.sum(data_reduce_null[mask]))
-        print("Bright VOA output intensities: ", intensities_bright)
+        _log.info("Bright VOA output intensities: ", intensities_bright)
         print("Null VOA output intensities: ", intensities_null)
-        print("\n")
+        _log.info("\n")
 
         for i, mask in enumerate(outputs_masks):
             inds = []
@@ -304,9 +308,9 @@ def optimize_null(initial_voltages, channels, outputs_masks, ind_null, cam, xpow
         B_intensity = np.sum(data_reduce[outputs_masks[1]])
         null_intensity = np.sum(data_reduce[outputs_masks[2]])
         D_intensity = np.sum(data_reduce[outputs_masks[3]])
-        print("voltages:", voltages)
-        print("intensities:", B_intensity, null_intensity, D_intensity)
-        print("\n")
+        _log.info("voltages:", voltages)
+        _log.info("intensities:", B_intensity, null_intensity, D_intensity)
+        _log.info("\n")
         return null_intensity/(B_intensity + D_intensity)
     
     from numpy.random import default_rng
@@ -318,10 +322,10 @@ def optimize_null(initial_voltages, channels, outputs_masks, ind_null, cam, xpow
     xatol = 0.05 # [V] should be bigger than resolution of xpow  FIXME  check this value
     bounds = [(0., 12.)]*n_v
 
-    # print(initial_simplex)
-    # print(xatol)
-    # print(bounds)
-    # print(fit_func(initial_voltages))
+    # _log.info(initial_simplex)
+    # _log.info(xatol)
+    # _log.info(bounds)
+    # _log.info(fit_func(initial_voltages))
     from scipy.optimize import minimize
     options = {'initial_simplex': initial_simplex, 
                'xatol':xatol}
@@ -371,14 +375,14 @@ def optimize_null_dynamicVOA(initial_voltages, channels, outputs_masks, ind_null
         B_intensity = np.sum(data_reduce[outputs_masks[1]])
         null_intensity = np.sum(data_reduce[outputs_masks[2]])
         D_intensity = np.sum(data_reduce[outputs_masks[3]])
-        print("voltages:", voltages)
-        print("raw intensities:", np.sum(data[outputs_masks[1]]), np.sum(data[outputs_masks[2]]), np.sum(data[outputs_masks[3]]))
-        print("intensities:", B_intensity, null_intensity, D_intensity)        
+        _log.info("voltages:", voltages)
+        _log.info("raw intensities:", np.sum(data[outputs_masks[1]]), np.sum(data[outputs_masks[2]]), np.sum(data[outputs_masks[3]]))
+        _log.info("intensities:", B_intensity, null_intensity, D_intensity)        
 
         # Dark threshhold condition
         null_bright = np.max(data[outputs_masks[ind_null]] )
         null_dark = np.std(dark[outputs_masks[ind_null]])
-        print("null_bright, null_dark:", null_bright, null_dark)
+        _log.info("null_bright, null_dark:", null_bright, null_dark)
         if null_bright/null_dark < dark_threshhold:
             tlx.set_voa(tlx.voa - delta_VOA)
         else:
@@ -387,7 +391,7 @@ def optimize_null_dynamicVOA(initial_voltages, channels, outputs_masks, ind_null
                 if np.max(data[mask]) > bright_threshhold:
                     tlx.set_voa(tlx.voa + delta_VOA)
                     break 
-        print("\n")
+        _log.info("\n")
         return null_intensity/(B_intensity + D_intensity)
     
     from numpy.random import default_rng
@@ -399,10 +403,10 @@ def optimize_null_dynamicVOA(initial_voltages, channels, outputs_masks, ind_null
     xatol = 0.05 # [V] should be bigger than resolution of xpow  FIXME  check this value
     bounds = [(0., 12.)]*n_v
 
-    # print(initial_simplex)
-    # print(xatol)
-    # print(bounds)
-    # print(fit_func(initial_voltages))
+    # _log.info(initial_simplex)
+    # _log.info(xatol)
+    # _log.info(bounds)
+    # _log.info(fit_func(initial_voltages))
     from scipy.optimize import minimize
     options = {'initial_simplex': initial_simplex, 
                'xatol':xatol}
@@ -463,15 +467,15 @@ def optimize_null_twoAtten(initial_voltages, channels, outputs_masks, ind_null, 
         null_intensity = np.sum(data_reduce_null[outputs_masks[2]]) * 10**((null_VOA-20) / 10)
         D_intensity = np.sum(data_reduce_bright[outputs_masks[3]]) * 10**((bright_VOA-20) / 10)
         null_value = null_intensity/(B_intensity + D_intensity)
-        print("voltages:", voltages)
-        # print("raw intensities:", np.sum(data[outputs_masks[1]]), np.sum(data[outputs_masks[2]]), np.sum(data[outputs_masks[3]]))
-        print("intensities:", B_intensity, null_intensity, D_intensity)   
-        print("null:", 10*np.log10(null_value), " dB")
+        _log.info("voltages:", voltages)
+        # _log.info("raw intensities:", np.sum(data[outputs_masks[1]]), np.sum(data[outputs_masks[2]]), np.sum(data[outputs_masks[3]]))
+        _log.info("intensities:", B_intensity, null_intensity, D_intensity)   
+        _log.info("null:", 10*np.log10(null_value), " dB")
 
         # # Dark threshhold condition
         # null_bright = np.max(data[outputs_masks[ind_null]] )
         # null_dark = np.std(dark[outputs_masks[ind_null]])
-        # print("null_bright, null_dark:", null_bright, null_dark)
+        # _log.info("null_bright, null_dark:", null_bright, null_dark)
         # if null_bright/null_dark < dark_threshhold:
         #     tlx.set_voa(tlx.voa - delta_VOA)
         # else:
@@ -480,7 +484,7 @@ def optimize_null_twoAtten(initial_voltages, channels, outputs_masks, ind_null, 
         #         if np.max(data[mask]) > bright_threshhold:
         #             tlx.set_voa(tlx.voa + delta_VOA)
         #             break 
-        print("\n")
+        _log.info("\n")
         all_voltages.append(voltages)
         null_metrics.append(null_value)
         return null_value
@@ -494,10 +498,10 @@ def optimize_null_twoAtten(initial_voltages, channels, outputs_masks, ind_null, 
     xatol = 0.05 # [V] should be bigger than resolution of xpow  FIXME  check this value
     bounds = [(0., 12.)]*n_v
 
-    # print(initial_simplex)
-    # print(xatol)
-    # print(bounds)
-    # print(fit_func(initial_voltages))
+    # _log.info(initial_simplex)
+    # _log.info(xatol)
+    # _log.info(bounds)
+    # _log.info(fit_func(initial_voltages))
     from scipy.optimize import minimize
     options = {'initial_simplex': initial_simplex, 
                'xatol':xatol}
@@ -648,7 +652,7 @@ def extract_outputs(filename_root, outputs_masks, filename_dark=None):
     outputs = []
     shape = [len(voltage) for voltage in voltages]
     for output_i, mask in enumerate(outputs_masks):
-        print(f"Output {output_i}...")
+        _log.info(f"Output {output_i}...")
         output = []
         for coord in coords:
             print(coord)

@@ -17,6 +17,9 @@ import matplotlib.pyplot as plt
 import time
 import warnings
 
+import logging
+_log = logging.getLogger('XPOW')
+
 warnings.filterwarnings('ignore')
 
 ATTEN_CHANNEL = 39
@@ -68,7 +71,7 @@ class XPOW:
         '''
         XPOW._XPOWOpen()
         XPOW._XPOWResetAllChannels()
-        print('Connected to XPOW.')
+        _log.info('Connected to XPOW.')
         return  
 
     def apply_voltage(self, channel, voltage):
@@ -88,7 +91,7 @@ class XPOW:
         if (channel == ATTEN_CHANNEL) and (voltage > ATTEN_MAXVOLTAGE):
             raise ValueError(f'Voltage applied to optical attenuator cannot exceed 5 V. Received: {voltage} V')
         XPOW._XPOWChannelAdjust(channel, voltage)
-        print(f"Channel {channel} set to {voltage} V.")
+        _log.debug(f"Channel {channel} set to {voltage} V.")
         return
 
     def read_XPOW(self, channel):
@@ -124,7 +127,7 @@ class XPOW:
         '''
         XPOW._XPOWResetAllChannels()
         XPOW._XPOWClearPorts()
-        print('Connection to XPOW closed.')
+        _log.debug('Connection to XPOW closed.')
         return 
 
     #### XPOW STATIC METHODS ####
@@ -179,9 +182,9 @@ class XPOW:
                 replyParts[0] = replyParts[0].rstrip(replyParts[0][14])
                 replyParts[1] = replyParts[1].rstrip(replyParts[1][-1])
                 replyParts[2] = replyParts[2].rstrip(replyParts[2][-1])
-                # print("channel: ", replyParts[0])
-                # print("voltage: ", replyParts[1])
-                # print("current: ", replyParts[2])
+                # _log.debug("channel: ", replyParts[0])
+                # _log.debug("voltage: ", replyParts[1])
+                # _log.debug("current: ", replyParts[2])
 
                 voltage = float(replyParts[1])
                 current = float(replyParts[2])
@@ -191,7 +194,7 @@ class XPOW:
             except:
                 XPOWErrorNum += 1
 
-                print("\n-- ERROR " + str(XPOWErrorNum) + " ENCOUNTERED, TRYING AGAIN... --")
+                _log.error("\n-- ERROR " + str(XPOWErrorNum) + " ENCOUNTERED, TRYING AGAIN... --")
 
                 time.sleep(XPOWErrorDelay)
         
@@ -250,7 +253,7 @@ class XPOW:
             except:
                 XPOWErrorNum += 1
 
-                print("\n-- ERROR " + str(XPOWErrorNum) + "for channel " + str(modChannel) + " ENCOUNTERED, TRYING AGAIN... --")
+                _log.error("\n-- ERROR " + str(XPOWErrorNum) + "for channel " + str(modChannel) + " ENCOUNTERED, TRYING AGAIN... --")
 
                 time.sleep(XPOWErrorDelay)
 
@@ -279,28 +282,28 @@ class XPOW:
             value = XPOW._XPOWWaitSerial(XPOWPorts[j], XPOWSerialLines[j], maxIterations)
 
             if (xpowKey in value):
-                print(value + " | XPOW key MATCHED")
+                _log.debug(value + " | XPOW key MATCHED")
             else:
-                print(value + " | XPOW key NOT MATCHED")
+                _log.debug(value + " | XPOW key NOT MATCHED")
 
     @staticmethod
     def _XPOWSendCommandAll(cmd, maxIterations):
-        print("Sent XPOW command: \"" + cmd + "\" to all ports.")
+        _log.debug("Sent XPOW command: \"" + cmd + "\" to all ports.")
         command = cmd + "\n"
 
         for j in range(len(XPOWSerialLines)):
             XPOWSerialLines[j].write(command.encode())
             time.sleep(XOPWCommandDelay)
 
-            print(XPOW._XPOWWaitSerial(XPOWPorts[j], XPOWSerialLines[j], maxIterations))
+            _log.debug(XPOW._XPOWWaitSerial(XPOWPorts[j], XPOWSerialLines[j], maxIterations))
 
     @staticmethod
     def _XPOWSendCommandSingle(cmd, portIdx, maxIterations):
-        # print("XPOWSerialLines: ", XPOWSerialLines)
+        # _log.debug("XPOWSerialLines: ", XPOWSerialLines)
         if (portIdx >= len(XPOWSerialLines)):
             raise ValueError("ERROR: XPOW port index " + str(portIdx) + " is too large!")
 
-        print("Sent XPOW command: \"" + cmd + "\" to port \"" + XPOWPorts[portIdx] + "\".")
+        _log.debug("Sent XPOW command: \"" + cmd + "\" to port \"" + XPOWPorts[portIdx] + "\".")
         command = cmd + "\n"
 
         XPOWSerialLines[portIdx].write(command.encode())
@@ -310,7 +313,7 @@ class XPOW:
 
         if (maxIterations > 0):
             reply = XPOW._XPOWWaitSerial(XPOWPorts[portIdx], XPOWSerialLines[portIdx], maxIterations)
-            print(reply)
+            _log.debug(reply)
 
         return reply
 
@@ -321,7 +324,7 @@ class XPOW:
         XPOWSerialLines.clear()
         time.sleep(XOPWCommandDelay)
 
-        print("XPOW ports cleared!")
+        _log.debug("XPOW ports cleared!")
 
     @staticmethod
     def _XPOWOpenPorts():
@@ -329,7 +332,7 @@ class XPOW:
             XPOWSerialLines[i].open()
             time.sleep(XOPWCommandDelay)
 
-        print("XPOW ports opened!")
+        _log.debug("XPOW ports opened!")
 
     @staticmethod
     def _XPOWClosePorts():
@@ -337,7 +340,7 @@ class XPOW:
             XPOWSerialLines[i].close()
             time.sleep(XOPWCommandDelay)
 
-        print("XPOW ports closed!")
+        _log.debug("XPOW ports closed!")
 
     @staticmethod
     def _XPOWCreatePorts():
@@ -345,7 +348,7 @@ class XPOW:
             XPOWSerialLines.append(serial.Serial(XPOWPorts[i], baudrate = XPOWBaudRate, timeout = 3.0, writeTimeout = 0))
             time.sleep(XOPWCommandDelay)
 
-        print("XPOW ports created!")
+        _log.debug("XPOW ports created!")
 
     @staticmethod
     def _XPOWResetPorts():
@@ -376,7 +379,7 @@ class XPOW:
 
     @staticmethod
     def _XPOWOpen():
-        print("------------------------------------------\nChosen XPOW Ports: " + str(XPOWPorts) + "\n------------------------------------------\n")
+        _log.debug("------------------------------------------\nChosen XPOW Ports: " + str(XPOWPorts) + "\n------------------------------------------\n")
 
         error = True
 
@@ -389,13 +392,13 @@ class XPOW:
                 error = False
 
             except:
-                print("\n-- XPOW ERROR ENCOUNTERED, TRYING AGAIN... --")
+                _log.error("\n-- XPOW ERROR ENCOUNTERED, TRYING AGAIN... --")
 
                 time.sleep(XPOWErrorDelay)
 
     @staticmethod
     def _XPOWResetAndOpen():
-        print("------------------------------------------\nChosen XPOW Ports: " + str(XPOWPorts) + "\n------------------------------------------\n")
+        _log.debug("------------------------------------------\nChosen XPOW Ports: " + str(XPOWPorts) + "\n------------------------------------------\n")
 
         error = True
 
@@ -408,7 +411,7 @@ class XPOW:
                 error = False
 
             except:
-                print("\n-- XPOW ERROR ENCOUNTERED, TRYING AGAIN... --")
+                _log.debug("\n-- XPOW ERROR ENCOUNTERED, TRYING AGAIN... --")
 
                 time.sleep(XPOWErrorDelay)
 
