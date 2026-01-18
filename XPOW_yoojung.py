@@ -2,6 +2,7 @@
 #
 # Library for defining XPOW class and routines for communicating with the XPOW breadboard. Based on Greg Sercel's script "D:\Greg's DSF Attempt\XPOW.py".
 # Modified by: Yoo Jung, 1/17/2026
+# remove "global"s and integrate all constants into class
 
 #### IMPORTS ####
 
