@@ -1,7 +1,7 @@
 # PIC_lib.py
 #
 # Library of routines for PIC testbed.
-# Modified by: Anusha, 12/4/2025 
+# Modified by: Yoo Jung, 1/17/2026
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -698,3 +698,93 @@ def extract_outputs(filename_root, outputs_masks, filename_dark=None):
         outputs.append(output)
     outputs = np.array(outputs).T            
     return voltages, outputs
+
+# New additions!
+
+from scipy.ndimage import gaussian_filter
+
+def find_spots(im,FWHM=7,num_apertures=5,plot=True):
+    """ take an image (assumed w/ bright spots) and return an array [[x0,y0],...] of spot positions. you can use this to check an existing conf file as well by setting <conf_name>.
+        this is only APPROXIMATE! for finer precision, use gaussian_conf()
+    
+    ARGS:
+        im (array): image array. if not provided, one will be taken automatically
+        FWHM (float/int): estimated full width half max of bright spots in detector image, in pixels (defaultt is 8)
+        num_apertures (int): how many spots you expect (e.g. 19 for 19-port PL). defaults to 1 (find the brightest spot)
+        sort (bool): optionally sort the photometric aperture locations by first coord
+        plot (bool): optionally plot the aperture locations, to check if they look good
+        # load (bool): if true, load photometry settings from currently loaded config; FWHM and num_apertures are ignored.
+    RETURNS:
+        numpy array of spot locations, [[x0,y0],[x1,y1],...]
+
+    """
+    radii=None
+
+    # if im is None:
+    #     N_frames = 100
+    #     im = self.expose(N_frames)
+
+    # _im = self.mask_image(im)
+    # _implot = np.copy(_im)
+    _im = im.copy()
+
+    # if not load:
+    _xpix = np.arange(_im.shape[0])
+    _ypix = np.arange(_im.shape[1])
+    _xg , _yg = np.meshgrid(_xpix,_ypix,indexing='ij')
+
+    locs = []
+    for i in range(num_apertures):
+        _filtered = gaussian_filter(_im,FWHM/2.355,mode='constant')
+        _x,_y = np.unravel_index(_filtered.argmax(),_filtered.shape)
+        _im[(_xg-_x)*(_xg-_x) + (_yg-_y)*(_yg-_y)<4*FWHM**2 ] = 0
+        locs.append([_x,_y])
+    locs = np.array(locs)
+    locs = locs[np.argsort(locs[:,1])]
+    # locs = np.sort(locs)
+    # default is to sort by x coord
+    # if sort: 
+    #     locs = locs[locs[:,0].argsort()]
+    # else:
+    #     # use currently loaded settings
+    #     assert self.locs is not None, "no config loaded, load one with load_conf()"
+    #     locs = self.locs
+    #     radii = self.radii
+
+    if plot:
+        print("detected spot locations: ")
+        plt.imshow(im)
+        for i,loc in enumerate(locs):
+            _loc = [loc[1],loc[0]]
+            plt.plot(*_loc,marker='.',color='k')
+            plt.annotate(str(i),_loc,color='white')
+            c1 = plt.Circle(_loc,FWHM if radii is None else radii[0], edgecolor='white',fill=False)
+            c2 = plt.Circle(_loc,1.5*FWHM if radii is None else radii[1], edgecolor='white',fill=False)
+            c3 = plt.Circle(_loc,2*FWHM if radii is None else radii[2], edgecolor='white',fill=False)
+            plt.gca().add_patch(c1)
+            plt.gca().add_patch(c2)
+            plt.gca().add_patch(c3)
+        plt.show()
+
+    return locs
+
+def make_circular_masks(imshape, locs, radius):
+    masks = []
+    ya = np.arange(imshape[0])
+    xa = np.arange(imshape[1])
+    xg, yg = np.meshgrid(xa, ya)
+    for loc in locs:
+        mask = np.zeros(imshape)
+        mask[(xg - loc[1])**2 + (yg - loc[0])**2 < radius**2] = 1
+        masks.append(mask)
+    return masks
+
+def phot(im, masks, memory_efficient = True):
+    
+    if not memory_efficient:
+        return np.sum((im) * masks, axis=(1,2))
+    else:
+        phots = []
+        for m in masks:
+            phots.append(np.sum(im * m))
+        return np.array(phots)
