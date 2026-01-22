@@ -196,7 +196,7 @@ class XENICSCAM:
         if self.cam.is_capturing:
             try:
                 self.cam.stop_capture()
-                _log.deug("Stopped streaming frames!")
+                _log.debug("Stopped streaming frames!")
                 self.cam.close()
                 _log.debug("Camera closed!")
             except XenethAPIException as e:
