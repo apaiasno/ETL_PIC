@@ -62,7 +62,7 @@ class XPOW:
         self.open(reset = reset)
         return
 
-    def open(self, reset = True):
+    def open(self, reset = True, selected_channels = None):
         ''' Opens connection to XPOW and resets all channels to 0 V.
 
             Parameters
@@ -74,7 +74,7 @@ class XPOW:
             None
         '''
         self._XPOWOpen()
-        if reset: self._XPOWResetAllChannels()
+        if reset: self._XPOWResetAllChannels(selected_channels=selected_channels)
         _log.info('Connected to XPOW.')
         return  
 
@@ -138,7 +138,7 @@ class XPOW:
         actualvoltage, current, power = self._XPOWChannelGetData(channel)
         return actualvoltage, current, power
 
-    def close(self, reset = True):
+    def close(self, reset = True, selected_channels = None):
         ''' Resets all channels to 0 V and closes connection to XPOW.
 
             Parameters
@@ -149,7 +149,7 @@ class XPOW:
             -------
             None
         '''
-        if reset: self._XPOWResetAllChannels()
+        if reset: self._XPOWResetAllChannels(selected_channels=selected_channels)
         self._XPOWClearPorts()
         _log.info('Connection to XPOW closed.')
         return 
@@ -434,8 +434,11 @@ class XPOW:
         self._XPOWClosePorts()
         self._XPOWOpenPorts()
 
-    def _XPOWResetAllChannels(self):
+    def _XPOWResetAllChannels(self, selected_channels = None):
         channel = 1
+
+        if selected_channels is None:
+            selected_channels = np.arange(1, 121)
 
         while (channel <= 120):
             modChannel = channel
@@ -448,6 +451,10 @@ class XPOW:
             elif (channel >= 81) and (channel <= 120):
                 modChannel = channel - 80
                 portIdx = 2
+
+            if channel not in selected_channels:
+                channel += 1
+                continue
 
             self._XPOWSendCommandSingle("CH:" + str(modChannel) + ":VOLT:0", portIdx, self.XPOWCommandTimeout)
             time.sleep(self.XPOWVoltageDelay)
