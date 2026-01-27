@@ -31,10 +31,10 @@ class XPOW:
     ATTEN_MAXVOLTAGE = 4.8
     # XPOWPorts = ["COM4", "COM6", "COM8"] # change based on device manager
     XPOWBaudRate = 115200
-    XPOWVoltageMax = 17
+    XPOWVoltageMax = 16 # changed from 17 
     XPOWVoltageControlMin = 0
     XPOWVoltageControlMax = 17
-    XPOWCurrentMax = 100
+    XPOWCurrentMax = 200 # changed from 100
     XPOWVoltageDelay = 0.05    # used to be 0.5        # (sec) Delay after each XPOW voltage setting
     XPOWErrorDelay = 1                              # (sec) Delay between re-tries of sending XPOW commands of error encountered
     XOPWCommandDelay = 0.05

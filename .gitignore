@@ -175,5 +175,5 @@ cython_debug/
 
 log/
 tests/
-scripts/dark.npy
+scripts/*.npy
 scripts/server.py

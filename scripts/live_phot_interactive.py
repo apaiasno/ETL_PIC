@@ -25,7 +25,7 @@ parser.add_argument('-d', '--dark', type = str, help='path to dark file (npy)')
 parser.add_argument('-n', '--num_spots', type= int, help = 'number of spots',
                     default = 5)
 parser.add_argument('-r', '--radius', help='photometry radius in pixels',
-                    default = 8)
+                    default = 16)
 
 args = parser.parse_args()
 dark = np.load(args.dark)
@@ -58,9 +58,10 @@ cam = XCam.XENICSCAM()
 
 print('ready to take images')
 
+_xpow.apply_voltage(_xpow.ATTEN_CHANNEL, 2.0)
 _xpow.apply_voltage(42, 0)
-_xpow.apply_voltage(63, 8)
-_xpow.apply_voltage(64, 8)
+_xpow.apply_voltage(63, 10)#8)
+_xpow.apply_voltage(64, 10)#8)
 
 _,_,image,_ = cam.take_image(navg=50)
 print('took images')
