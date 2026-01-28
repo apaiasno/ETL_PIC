@@ -208,44 +208,6 @@ class Bench:
         self.data_queues = [collections.deque(maxlen=maxlen) for _ in range(self.num_spots)]
         print(f"Masks created for {self.num_spots} spots.")
 
-    # # --- PART 1: The Reader (Background Data Collection) ---
-    # def _reader_task(self):
-    #     logging.info("Reader thread started")
-    #     while not self.stop_event.is_set():
-    #         try:
-    #             im = self.take_image(nframes=1)
-    #             if self.masks is not None:
-    #                 values = PIC.phot(im, self.masks)
-    #                 logging.info('reading photometry, %.1f' % (values[0]))
-    #                 for i, val in enumerate(values):
-    #                     # if i < len(self.data_queues):
-    #                     self.data_queues[i].append(val)
-    #             time.sleep(0.01)
-    #         except Exception as e:
-    #             logging.error(f"Reader Error: {e}")
-    #             time.sleep(0.5)
-    #     logging.info("Reader thread finished")
-
-    # def start_reader(self):
-    #     """Starts the background thread if it's not already running."""
-    #     if self.masks is None:
-    #         print("No masks found. Running make_masks() first...")
-    #         self.make_masks()
-
-    #     if self.monitor_thread is None or not self.monitor_thread.is_alive():
-    #         self.stop_event.clear()
-    #         self.monitor_thread = threading.Thread(target=self._reader_task)
-    #         self.monitor_thread.daemon = True
-    #         self.monitor_thread.start()
-    #         print(">> Background Reader Started (filling queues).")
-    #     else:
-    #         print(">> Reader is already running.")
-
-    # def stop_reader(self):
-    #     self.stop_event.set()
-    #     if self.monitor_thread:
-    #         self.monitor_thread.join()
-    #     print(">> Reader Stopped.")
 
     def init_shared_memory(self, shm_name = 'phot.shm', history_len =600):
         """Creates a memory block in RAM accessible by other scripts."""
@@ -269,9 +231,6 @@ class Bench:
         if np.sum(self.shm_arr) == 0:
              self.shm_arr[:] = 0
 
-        # Register cleanup so memory is freed when script exits
-        # atexit.register(self.cleanup_shm)
-
     def cleanup_shm(self):
         if self.shm:
             # 1. Close the connection (Detaches this script from memory)
@@ -280,21 +239,7 @@ class Bench:
             except Exception as e:
                 logging.info(e) # Already closed, ignore
             
-            # # 2. Unlink (Deletes the memory block from the OS)
-            # try:
-            #     self.shm.unlink()
-            #     print("Shared Memory unlinked successfully.")
-            # except FileNotFoundError:
-            #     # This is GOOD. It means the memory is already gone.
-            #     # Common on Windows or if cleanup ran twice.
-            #     pass 
-            # except Exception as e:
-            #     print(f"Warning during SHM cleanup: {e}")
-            
-            # Reset variable so we don't try again
             self.shm = None
-
-    # ... (Your Hardware methods: apply_v, take_image, get_dark, make_masks) ...
 
     def start_reader(self):
 
@@ -348,10 +293,8 @@ class Bench:
                 self.shm_arr[:, :-1] = self.shm_arr[:, 1:]
                 # Set last column to new values
                 self.shm_arr[:, -1] = values
-
-                # logging.info('reading photometry, %.1f' % (values[0]))
                     
-                time.sleep(0.01)
+                time.sleep(self.reader_delay)
             except Exception as e:
                 print(e)
                 time.sleep(1)
