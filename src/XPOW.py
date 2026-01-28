@@ -45,7 +45,8 @@ class XPOW:
     XPOWVoltagePrecision = 4
     check = False
 
-    def __init__(self, reset = True, ports = ['COM4', 'COM6', 'COM8']):
+    def __init__(self, reset = True, ports = ['COM4', 'COM6', 'COM8'],
+                 selected_channels = None):
         ''' Upon initialization of class instance:
             1. Serial connection to XPOW breadboard.
             2. Resets all channels.
@@ -59,7 +60,9 @@ class XPOW:
             None
         '''
         self.XPOWPorts = ports
-        self.open(reset = reset)
+        self.open(reset = reset,
+                  selected_channels = selected_channels)
+        self.selected_channels = selected_channels
         return
 
     def open(self, reset = True, selected_channels = None):

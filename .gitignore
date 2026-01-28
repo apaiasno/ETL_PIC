@@ -177,3 +177,4 @@ log/
 tests/
 scripts/*.npy
 scripts/server.py
+conf/
