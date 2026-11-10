@@ -1,0 +1,25 @@
+# -----------------------------
+# Font settings
+# -----------------------------
+font.family: Segoe UI
+
+# -----------------------------
+# Axes labels and titles
+# -----------------------------
+axes.labelsize: 22
+axes.labelweight: 600
+axes.titlesize: 20
+axes.titleweight: 500
+
+# -----------------------------
+# Colorbar label
+# (colorbar uses axes label settings)
+# -----------------------------
+# No separate rcParam exists for colorbar label size,
+# so it follows axes.labelsize automatically.
+
+# Optional: make tick labels consistent
+xtick.labelsize: 16
+ytick.labelsize: 16
+
+legend.fontsize: 18
