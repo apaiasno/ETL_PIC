@@ -1,0 +1,15 @@
+# In lab/, ignore everything except folders, .py files and .ipynb notebooks
+lab/**
+!lab/**/
+!lab/**/*.py
+!lab/**/*.ipynb
+
+# Folders to skip even though they hold .py/.ipynb files
+lab/Data/
+**/__pycache__/
+**/.ipynb_checkpoints/
+
+# Extra exclusions
+lab/ControlCode/DataAcquisitionNotebooks/obsolete/
+lab/ControlCode/Manuals/
+lab/ControlCode/VendorResources/
