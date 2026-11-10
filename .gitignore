@@ -1,15 +1,19 @@
-# In lab/, ignore everything except folders, .py files and .ipynb notebooks
+# lab/: only folders, .py and .ipynb files
 lab/**
 !lab/**/
 !lab/**/*.py
 !lab/**/*.ipynb
 
-# Folders to skip even though they hold .py/.ipynb files
-lab/Data/
-**/__pycache__/
-**/.ipynb_checkpoints/
+# simulation/ (includes rsoft_lib): only folders, .py and .ipynb files
+simulation/**
+!simulation/**/
+!simulation/**/*.py
+!simulation/**/*.ipynb
 
-# Extra exclusions
+# Exclusions (must stay below the whitelist rules)
+lab/Data/
 lab/ControlCode/DataAcquisitionNotebooks/obsolete/
 lab/ControlCode/Manuals/
 lab/ControlCode/VendorResources/
+**/__pycache__/
+**/.ipynb_checkpoints/
