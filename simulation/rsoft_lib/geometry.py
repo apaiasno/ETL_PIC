@@ -1,11 +1,119 @@
-"""S-bend geometry (lengths, Euler bends) and GDSII output."""
-import struct
-import subprocess
+"""Geometry: paths (circular and Euler bends, waves, delay arms) and widths (raised-cosine tapers).
+
+A path is given by three arrays x, z, phi (um, um, rad): the position across (x) and along (z) the propagation, and the tangent angle
+from z. A width is a number, an array along the path, or a function of the path length s (um). Nothing here knows about RSoft or GDS:
+rsoft_lib.circuit turns paths and widths into an RSoft circuit (exportable to GDS with RSoft's own export), and rsoft_lib.gds has the
+independent GDS reader and writer.
+
+Contents (in this order)
+    Path utilities      bend_curvature, parallel_path, path_list, eval_width
+    Circular S-bends    sbend_lengths, sidestep_offset, sidestep_straight, sidestep_angle
+    Euler S-bends       euler_sbend, euler_ramp_length, euler_sbend_from_ramp, euler_sbend_fixed_ramp
+    Structures          delay_arm_parameters, delay_arm, euler_wave
+    Widths              raised_cosine, cosine_tapers
+Names starting with an underscore are helpers of the function that follows them.
+"""
+
+
 import warnings
-from pathlib import Path
 
 import numpy as np
 from scipy.optimize import brentq
+
+
+# --------------------------------------------------------------------------- #
+# Path utilities
+# --------------------------------------------------------------------------- #
+
+
+def bend_curvature(x, z, phi):
+    """Path length s (um) and signed curvature (1/um) along a path from euler_sbend and similar."""
+    s = np.concatenate([[0], np.cumsum(np.hypot(np.diff(x), np.diff(z)))])
+    return s, np.gradient(phi, s)
+
+
+def parallel_path(x, z, phi, s):
+    """Curve running parallel to (x, z) at a constant perpendicular distance s (um).
+
+    s > 0 is on the +x side where the path heads along +z.
+    """
+    return x + s * np.cos(phi), z - s * np.sin(phi), phi
+
+
+def path_list(x, z, phi, width):
+    """Paths as a list with one (x, z, phi, width) entry per path, every entry an array over the points, from the arguments of
+    save_gds and paths_to_circuit: x, z, phi of one path (1D arrays) or of several (a 2D array with one row per path, NaN-padded at
+    the end if they differ in length, or a list of 1D arrays); phi=None computes the tangent angle; width: one value, one per path,
+    one per point, a function of the path length s (um), or a list with one of these for each path."""
+    def rows(a):
+        if isinstance(a, (list, tuple)):
+            if len(a) and np.ndim(a[0]) == 0:                      # a single path given as a plain list
+                return [np.asarray(a, float)]
+            return [np.asarray(r, float) for r in a]
+        a = np.asarray(a, float)
+        return [a] if a.ndim == 1 else list(a)                     # 1D: one path; 2D: one path per row
+
+    xs, zs = rows(x), rows(z)
+    ps = rows(phi) if phi is not None else [None] * len(xs)
+    n = len(xs)
+    if not (len(zs) == len(ps) == n):
+        raise ValueError(f"x, z and phi must have the same number of paths (got {n}, {len(zs)}, {len(ps)})")
+    if isinstance(width, (list, tuple)) and n == 1 and len(width) == len(xs[0]) and all(np.ndim(v) == 0 for v in width):
+        widths = [np.asarray(width, float)]                        # one path with a width at every point, given as a list
+    elif isinstance(width, (list, tuple)):                         # one entry per path, each a number or an array over the points
+        widths = list(width)
+    elif np.ndim(width) == 0:
+        widths = [width] * n
+    elif np.ndim(width) == 2:
+        widths = list(width)
+    elif n == 1 and len(width) == len(xs[0]):                      # one path with a width at every point
+        widths = [np.asarray(width, float)]
+    else:
+        widths = list(np.asarray(width, float))                    # one number per path
+    if len(widths) != n:
+        raise ValueError(f"width has {len(widths)} entries for {n} paths")
+    out = []
+    for k, (px, pz, pphi, w) in enumerate(zip(xs, zs, ps, widths)):
+        if pphi is None:                                            # the tangent angle from z, from the path itself
+            pphi = np.full_like(px, np.nan)
+        if not (px.shape == pz.shape == pphi.shape) or px.ndim != 1:
+            raise ValueError(f"path {k}: x, z and phi must be 1D arrays of the same length")
+        ok = np.isfinite(px) & np.isfinite(pz)
+        m = int(ok.sum())
+        if not ok[:m].all():
+            raise ValueError(f"path {k}: NaN values are only allowed at the end of a row (padding)")
+        px, pz, pphi = px[:m], pz[:m], pphi[:m]
+        if m < 2:
+            raise ValueError(f"path {k} has fewer than 2 points")
+        if not np.isfinite(pphi).all():
+            if np.isfinite(pphi).any():
+                raise ValueError(f"path {k}: phi has missing values")
+            pphi = np.arctan2(np.gradient(px), np.gradient(pz))
+        if callable(w):                                             # a function of the path length s (um) from the start of the path
+            w = eval_width(w, np.r_[0.0, np.cumsum(np.hypot(np.diff(px), np.diff(pz)))])
+        w = np.full(m, float(w)) if np.ndim(w) == 0 else np.asarray(w, float)[:m]
+        if w.shape != px.shape or not (w > 0).all():
+            raise ValueError(f"path {k}: the width must be positive, a single value or one value per point")
+        out.append((px, pz, pphi, w))
+    return out
+
+
+def eval_width(f, s):
+    """The widths at the path lengths s of a width function f(s); f may be vectorized or take a single number."""
+    try:
+        w = np.asarray(f(s), float)
+        if w.shape == s.shape:
+            return w
+        if w.ndim == 0:
+            return np.full(s.shape, float(w))
+    except Exception:
+        pass
+    return np.array([float(f(v)) for v in s])
+
+
+# --------------------------------------------------------------------------- #
+# Circular S-bends
+# --------------------------------------------------------------------------- #
 
 
 def sbend_lengths(R, d, junction_offset=0.0, straight_offset=0.0):
@@ -27,6 +135,35 @@ def sbend_lengths(R, d, junction_offset=0.0, straight_offset=0.0):
         raise ValueError("Arc offset must satisfy d_arc <= 4R for two tangent arcs.")
     theta = np.arccos(1 - d_arc / (2 * R))
     return 2 * R * theta, 2 * R * np.sin(theta), theta
+
+
+def sidestep_offset(radius, angle_deg, straight, junction_offset=0.0):
+    """Lateral displacement (um) of two arcs of `radius` turning by `angle_deg`, joined by a tilted straight of
+    length `straight`: 2 R (1 - cos a) + L sin a + 2 junction_offset (the offset applied at each end)."""
+    a = np.radians(angle_deg)
+    return 2 * radius * (1 - np.cos(a)) + straight * np.sin(a) + 2 * junction_offset
+
+
+def sidestep_straight(radius, offset, angle_deg, junction_offset=0.0):
+    """Length of the tilted straight (um) that gives the lateral displacement `offset` for arcs turning by `angle_deg`."""
+    a = np.radians(angle_deg)
+    return (offset - 2 * junction_offset - 2 * radius * (1 - np.cos(a))) / np.sin(a)
+
+
+def sidestep_angle(radius, offset, straight, junction_offset=0.0):
+    """Arc angle (degrees) that gives the lateral displacement `offset` for a tilted straight of length `straight`
+    (the smallest positive solution of 2 R (1 - cos a) + L sin a = offset - 2 junction_offset)."""
+    A, d = 2 * radius, offset - 2 * junction_offset
+    r = np.hypot(straight, A)
+    x = (d - A) / r
+    if abs(x) > 1:
+        raise ValueError("No angle gives this offset with these radius and straight values.")
+    return float(np.degrees(np.arctan2(A, straight) + np.arcsin(x)))
+
+
+# --------------------------------------------------------------------------- #
+# Euler S-bends
+# --------------------------------------------------------------------------- #
 
 
 def _euler_path(R_min, L_c, sa, n):
@@ -138,111 +275,33 @@ def euler_sbend_fixed_ramp(d, d_ref, R_min, p=1.0, ds=1.0, allow_lower_peak=True
     return euler_sbend_from_ramp(d, R_min, euler_ramp_length(d_ref, R_min, p), ds, allow_lower_peak, return_params)
 
 
-def bend_curvature(x, z, phi):
-    """Path length s (um) and signed curvature (1/um) along a path from euler_sbend and similar."""
-    s = np.concatenate([[0], np.cumsum(np.hypot(np.diff(x), np.diff(z)))])
-    return s, np.gradient(phi, s)
-
-
-def parallel_path(x, z, phi, s):
-    """Curve running parallel to (x, z) at a constant perpendicular distance s (um).
-
-    s > 0 is on the +x side where the path heads along +z.
-    """
-    return x + s * np.cos(phi), z - s * np.sin(phi), phi
-
-
-def save_gds(filename, x, z, phi, width, layer=1, cell_name="EULER_SBEND"):
-    """Write the waveguide outline (centerline +- width/2) to a GDSII file.
-
-    Units: um, 1 nm grid. Pass lists for x, z, phi to write several paths
-    into one cell: save_gds(fn, [x1, x2], [z1, z2], [p1, p2], width).
-    """
-    def rec(rtype, dtype, data=b""):
-        data += b"\x00" * (len(data) % 2)
-        return struct.pack(">HBB", 4 + len(data), rtype, dtype) + data
-
-    def real8(v):                                   # GDSII 8-byte real (v > 0)
-        e = 64
-        while v >= 1:
-            v /= 16
-            e += 1
-        while v < 1 / 16:
-            v *= 16
-            e -= 1
-        return bytes([e]) + int(round(v * 2**56)).to_bytes(7, "big")
-
-    paths = list(zip(x, z, phi)) if isinstance(x, (list, tuple)) else [(x, z, phi)]
-
-    out = [rec(0x00, 0x02, struct.pack(">h", 600)), rec(0x01, 0x02, bytes(24)),
-           rec(0x02, 0x06, b"LIB"), rec(0x03, 0x05, real8(1e-3) + real8(1e-9)),
-           rec(0x05, 0x02, bytes(24)), rec(0x06, 0x06, cell_name.encode())]
-    step = 4000                                     # keep each polygon under GDSII's 8191-point limit
-    for px, pz, pphi in paths:
-        nx_, nz_ = np.cos(pphi), -np.sin(pphi)      # normal to the path
-        left = np.column_stack([px + width / 2 * nx_, pz + width / 2 * nz_])
-        right = np.column_stack([px - width / 2 * nx_, pz - width / 2 * nz_])
-        for i in range(0, len(px) - 1, step):
-            j = min(i + step, len(px) - 1)
-            poly = np.vstack([left[i:j + 1], right[i:j + 1][::-1], left[i:i + 1]])
-            pts = np.round(poly * 1000).astype(">i4")   # um -> nm
-            out += [rec(0x08, 0x00), rec(0x0D, 0x02, struct.pack(">h", layer)),
-                    rec(0x0E, 0x02, struct.pack(">h", 0)), rec(0x10, 0x03, pts.tobytes()),
-                    rec(0x11, 0x00)]
-    out += [rec(0x07, 0x00), rec(0x04, 0x00)]
-    with open(filename, "wb") as f:
-        f.write(b"".join(out))
-
-
 # --------------------------------------------------------------------------- #
-# Side-step made of two equal circular arcs joined by a tilted straight
+# Structures made of S-bends
 # --------------------------------------------------------------------------- #
-def sidestep_offset(radius, angle_deg, straight, junction_offset=0.0):
-    """Lateral displacement (um) of two arcs of `radius` turning by `angle_deg`, joined by a tilted straight of
-    length `straight`: 2 R (1 - cos a) + L sin a + 2 junction_offset (the offset applied at each end)."""
-    a = np.radians(angle_deg)
-    return 2 * radius * (1 - np.cos(a)) + straight * np.sin(a) + 2 * junction_offset
 
 
-def sidestep_straight(radius, offset, angle_deg, junction_offset=0.0):
-    """Length of the tilted straight (um) that gives the lateral displacement `offset` for arcs turning by `angle_deg`."""
-    a = np.radians(angle_deg)
-    return (offset - 2 * junction_offset - 2 * radius * (1 - np.cos(a))) / np.sin(a)
-
-
-def sidestep_angle(radius, offset, straight, junction_offset=0.0):
-    """Arc angle (degrees) that gives the lateral displacement `offset` for a tilted straight of length `straight`
-    (the smallest positive solution of 2 R (1 - cos a) + L sin a = offset - 2 junction_offset)."""
-    A, d = 2 * radius, offset - 2 * junction_offset
-    r = np.hypot(straight, A)
-    x = (d - A) / r
-    if abs(x) > 1:
-        raise ValueError("No angle gives this offset with these radius and straight values.")
-    return float(np.degrees(np.arctan2(A, straight) + np.arcsin(x)))
-
-
-def ind2gds(ind_path, gds_path=None, layer=None, resolution=None, cwd=None):
-    """Export an RSoft .ind file to GDS with RSoft's ind2gds utility (layer 0 -> `layer`; default resolution: CAD preference).
-
-    ind2gds looks for files that the circuit refers to (such as an imported .gds) relative to its working directory, which is
-    the folder of the .ind file unless `cwd` says otherwise."""
-    ind_path = Path(ind_path).resolve()
-    if not ind_path.is_file():
-        raise FileNotFoundError(f"The .ind file does not exist: {ind_path}")
-    cwd = Path(cwd).resolve() if cwd else ind_path.parent
-    if not cwd.is_dir():
-        raise NotADirectoryError(f"The working directory does not exist: {cwd}")
-    gds_path = Path(gds_path).resolve() if gds_path else ind_path.with_suffix(".gds")
-    gds_path.parent.mkdir(parents=True, exist_ok=True)
-    command = ["ind2gds", f"-o={gds_path}"]
-    if layer is not None:
-        command.append(f"-l{layer}")
-    if resolution is not None:
-        command.append(f"-r{resolution}")
-    result = subprocess.run(command + [str(ind_path)], cwd=cwd, capture_output=True, text=True)
-    if not gds_path.exists():
-        raise RuntimeError(f"ind2gds produced no file: {result.stdout} {result.stderr}")
-    return gds_path
+def delay_arm_parameters(z_length, deltaL, R, end_straight=None):
+    """The numbers that define a delay arm (see delay_arm): the S-bend angle theta (rad; deltaL = 4 R (theta - sin theta)), the
+    lengths L_end of the first and last straight and L_mid of the middle one, and the bump height. Raises an error if the arm does not
+    fit, and warns if the middle straight is short."""
+    if deltaL < 0:
+        raise ValueError("deltaL must be >= 0")
+    if deltaL / (4 * R) > np.pi / 2 - 1:
+        raise ValueError(f"deltaL is too large for R = {R:g}: the arcs would turn by more than 90 degrees "
+                         f"(the largest deltaL is {4 * R * (np.pi / 2 - 1):.1f})")
+    theta = brentq(lambda t: t - np.sin(t) - deltaL / (4 * R), 0.0, np.pi / 2) if deltaL > 0 else 0.0
+    remaining = float(z_length - 4 * R * np.sin(theta))
+    if remaining < 0:
+        raise ValueError(f"z_length is too short: the two S-bends need {4 * R * np.sin(theta):.1f} um")
+    L_end = remaining / 4 if end_straight is None else end_straight
+    L_mid = remaining - 2 * L_end
+    if L_mid < 0:
+        raise ValueError(f"end_straight is too long: the straights add up to {remaining:.1f} um")
+    if L_mid < 0.15 * z_length:
+        warnings.warn(f"The middle straight is only {L_mid:.1f} um long: the two S-bends already take {4 * R * np.sin(theta):.1f} um "
+                      f"of the {z_length:g} um z-length (theta = {np.degrees(theta):.1f} deg, offset {2 * R * (1 - np.cos(theta)):.1f} um). "
+                      f"A longer z_length or a smaller R leaves more room.")
+    return dict(theta=float(theta), L_end=float(L_end), L_mid=float(L_mid), bump_height=float(2 * R * (1 - np.cos(theta))))
 
 
 def delay_arm(z_length, deltaL, R, end_straight=None, ds=1.0, x0=0.0, direction=1, plot=False, return_params=False):
@@ -262,23 +321,8 @@ def delay_arm(z_length, deltaL, R, end_straight=None, ds=1.0, x0=0.0, direction=
     Returns x, z, phi (z = propagation direction, phi = tangent angle from z, as in euler_sbend; they go to save_gds),
     and with return_params=True also a dict with theta_deg, bump_height, L_end, L_mid and path_length.
     """
-    if deltaL < 0:
-        raise ValueError("deltaL must be >= 0")
-    if deltaL / (4 * R) > np.pi / 2 - 1:
-        raise ValueError(f"deltaL is too large for R = {R:g}: the arcs would turn by more than 90 degrees "
-                         f"(the largest deltaL is {4 * R * (np.pi / 2 - 1):.1f})")
-    theta = brentq(lambda t: t - np.sin(t) - deltaL / (4 * R), 0.0, np.pi / 2) if deltaL > 0 else 0.0
-    remaining = float(z_length - 4 * R * np.sin(theta))
-    if remaining < 0:
-        raise ValueError(f"z_length is too short: the two S-bends need {4 * R * np.sin(theta):.1f} um")
-    L_end = remaining / 4 if end_straight is None else end_straight
-    L_mid = remaining - 2 * L_end
-    if L_mid < 0:
-        raise ValueError(f"end_straight is too long: the straights add up to {remaining:.1f} um")
-    if L_mid < 0.15 * z_length:
-        warnings.warn(f"The middle straight is only {L_mid:.1f} um long: the two S-bends already take {4 * R * np.sin(theta):.1f} um "
-                      f"of the {z_length:g} um z-length (theta = {np.degrees(theta):.1f} deg, offset {2 * R * (1 - np.cos(theta)):.1f} um). "
-                      f"A longer z_length or a smaller R leaves more room.")
+    p = delay_arm_parameters(z_length, deltaL, R, end_straight)
+    theta, L_end, L_mid = p["theta"], p["L_end"], p["L_mid"]
     sign = 1.0 if direction >= 0 else -1.0
 
     # build the path piece by piece: (curvature, length), with curvature 0 for the straights
@@ -302,10 +346,10 @@ def delay_arm(z_length, deltaL, R, end_straight=None, ds=1.0, x0=0.0, direction=
     x, z, phi = np.array(x), np.array(z), np.array(phi)
     if plot:
         import matplotlib.pyplot as plt
-        plt.figure(figsize=(3, 10))
-        plt.plot(x, z)
-        plt.xlabel("x (um)")
-        plt.ylabel("z (um)")
+        plt.figure(figsize=(10, 3))
+        plt.plot(z, x)
+        plt.xlabel("z (um)")
+        plt.ylabel("x (um)")
         plt.title(f"theta = {np.degrees(theta):.1f} deg, offset = {2 * R * (1 - np.cos(theta)):.1f} um, "
                   f"straights {L_end:.0f} / {L_mid:.0f} / {L_end:.0f} um")
         plt.show()
@@ -371,11 +415,45 @@ def euler_wave(n_periods, step, R_min, p=0.5, z_length=None, straight=0.0, ds=1.
                 sbend_z=sbend_z, min_radius=float(1 / np.max(np.abs(curvature))))
     if plot:
         import matplotlib.pyplot as plt
-        plt.figure(figsize=(3, 10))
-        plt.plot(x, z)
-        plt.xlabel("x (um)")
-        plt.ylabel("z (um)")
+        plt.figure(figsize=(10, 3))
+        plt.plot(z, x)
+        plt.xlabel("z (um)")
+        plt.ylabel("x (um)")
         plt.title(f"{n_periods} periods, step {step:g} um, R_min {R_min:g} um: z-length {info['z_length']:.0f} um, "
                   f"straights {straight:.0f} um, deltaL {info['deltaL']:.2f} um")
         plt.show()
     return (x, z, phi, info) if return_params else (x, z, phi)
+
+
+# --------------------------------------------------------------------------- #
+# Widths
+# --------------------------------------------------------------------------- #
+
+
+def raised_cosine(s, s0, s1, w0, w1):
+    """Width at the path length(s) s of a raised-cosine taper that goes from w0 at s0 to w1 at s1 (w0 before s0, w1 after s1)."""
+    u = np.clip((np.asarray(s, float) - s0) / (s1 - s0), 0.0, 1.0)
+    return w0 + (w1 - w0) * (0.5 - 0.5 * np.cos(np.pi * u))
+
+
+def cosine_tapers(*tapers, width=3.4):
+    """A width function of the path length s (um) made of raised-cosine tapers: each taper is (s0, s1, w1), from the width reached
+    so far (`width` at the start) to w1 between s0 and s1, constant in between. For example
+    cosine_tapers((1000, 1500, 5.0), (3000, 3500, 3.4)) widens from 3.4 to 5 um over s = 1000 to 1500 and narrows back
+    over 3000 to 3500. Use it as the width of save_gds or paths_to_circuit; a taper that lies on one straight piece of the path
+    becomes one segment with a user taper in the RSoft file."""
+    tapers = sorted(tapers)
+    for a, b in zip(tapers[:-1], tapers[1:]):
+        if a[1] > b[0]:
+            raise ValueError(f"The tapers {a[:2]} and {b[:2]} overlap")
+    if any(t[1] <= t[0] for t in tapers):
+        raise ValueError("Every taper needs s1 > s0")
+
+    def f(s):
+        s = np.asarray(s, float)
+        w, previous = np.full(s.shape, float(width)), float(width)
+        for s0, s1, w1 in tapers:
+            w = np.where(s >= s0, raised_cosine(s, s0, s1, previous, w1), w)
+            previous = float(w1)
+        return w
+    return f

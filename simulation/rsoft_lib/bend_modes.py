@@ -31,6 +31,7 @@ of a whole S-bend.
 from __future__ import annotations
 
 import os
+import re
 from functools import lru_cache
 
 import numpy as np
@@ -39,11 +40,11 @@ from scipy.optimize import minimize_scalar
 
 from .fields import FieldData, read_mode, regrid
 from .geometry import sbend_lengths
-from .modes import MODE_LIB_DIR, mode_field
+from .modes import MODE_LIB_DIR, mode_field, straight_model
 from .monitors import read_monitor
-from .utils import param_str
+from .utils import interp_pchip, param_str, parse_param
 
-BEND_MODE_DIR = r"D:\DATA\ActivePIC\SingleWaveguideConvergence\StraightWaveguide_simulatedBend_neff_table"
+BEND_MODE_DIR = r"D:\DATA\ETL_PIC\simulation\rsoft_lib\StraightWaveguide_simulatedBend_neff_table"
 BEND_MODE_ROOT = "StraightWaveguide_simulatedBend"
 
 
@@ -123,28 +124,79 @@ def best_offset(f_straight: FieldData, f_bend: FieldData, smax=0.5):
     return float(res.x), float(eta(0.0)), float(-res.fun)
 
 
+@lru_cache(maxsize=256)
+def _straight_offset_exact(radius, wav, ref_width, mode_dir, root, ref_dir, smax):
+    """(offset, centroid_shift, eta_no_offset, eta_offset) at a (radius, wavelength) of the FemSIM scan. Cached."""
+    ref = read_straight_mode(wav, ref_width, ref_dir)
+    bend = read_te_mode(radius, wav, mode_dir, root)
+    s, eta0, eta1 = best_offset(ref, bend, smax)
+    return s, -(mode_centroid_x(bend) - mode_centroid_x(regrid(ref, bend))), eta0, eta1
+
+
+def scanned_points(mode_dir=BEND_MODE_DIR, root=BEND_MODE_ROOT):
+    """The (radius, wavelength) pairs of the FemSIM bend scan in mode_dir (those with a .mon file), sorted."""
+    pattern = re.compile(rf"^{re.escape(root)}_Wav(\d+p\d+)_Radius(\d+p\d+)\.mon$", re.IGNORECASE)
+    return sorted((parse_param(h.group(2)), parse_param(h.group(1))) for h in map(pattern.match, os.listdir(mode_dir)) if h)
+
+
 def straight_offset(radius, wav, ref_width=3.4, mode_dir=BEND_MODE_DIR, root=BEND_MODE_ROOT,
-                    ref_dir=MODE_LIB_DIR, smax=0.5, details=False):
+                    ref_dir=MODE_LIB_DIR, smax=0.5, details=False, interpolate=True):
     """Signed bend-to-straight offset (um) for one (radius, wavelength).
 
     Positive = move the bend guide toward +x; the magnitude is the value for
     `Straight_offset` in the .ind. The reference is the straight-guide mode of
     width `ref_width` from `ref_dir`; the bend mode comes from the FemSIM scan
-    in `mode_dir`. Raises FileNotFoundError if that (radius, wav) was not scanned.
+    in `mode_dir`.
 
-    With details=True, returns a dict instead: offset, centroid_shift (an
-    independent estimate from the mode centroids), eta_no_offset and
-    eta_offset (power overlap without and with the offset; 1 - eta is the
-    mismatch loss).
+    If (radius, wav) is a point of the scan, the offset is computed from its mode. Otherwise, with interpolate=True (default), it is
+    interpolated from the scanned radii at that wavelength (or, if the wavelength was not scanned, at the two scanned wavelengths around
+    it, then linearly in wavelength). The offset falls roughly as 1/R, so offset * R is interpolated in R (PCHIP); above the largest
+    scanned radius offset * R is held (offset ~ 1/R, with a warning); below the smallest radius, or outside the scanned wavelengths, it
+    raises ValueError. interpolate=False raises FileNotFoundError for a point that was not scanned.
+
+    With details=True, returns a dict instead: offset, interpolated (False/True), and, for a scanned point, centroid_shift (an
+    independent estimate from the mode centroids), eta_no_offset and eta_offset (power overlap without and with the offset;
+    1 - eta is the mismatch loss); for an interpolated one, the radii and wavelengths it was interpolated from.
     """
-    ref = read_straight_mode(wav, ref_width, ref_dir)
-    bend = read_te_mode(radius, wav, mode_dir, root)
-    s, eta0, eta1 = best_offset(ref, bend, smax)
+    import warnings
+    args = (ref_width, mode_dir, root, ref_dir, smax)
+    if os.path.exists(bend_stem(radius, wav, mode_dir, root) + ".mon") or not interpolate:
+        s, centroid, eta0, eta1 = _straight_offset_exact(float(radius), float(wav), *args)
+        if not details:
+            return s
+        return dict(offset=s, interpolated=False, centroid_shift=centroid, eta_no_offset=eta0, eta_offset=eta1)
+
+    points = scanned_points(mode_dir, root)
+    wavs = np.array(sorted({w for _, w in points}))
+    if len(wavs) == 0:
+        raise FileNotFoundError(f"No {root}_Wav*_Radius*.mon files in {mode_dir}")
+    if np.any(np.isclose(wavs, wav, rtol=0, atol=5e-4)):
+        use = [(float(wavs[np.isclose(wavs, wav, rtol=0, atol=5e-4)][0]), 1.0)]
+    elif wavs[0] < wav < wavs[-1]:
+        hi = int(np.searchsorted(wavs, wav))
+        t = (wav - wavs[hi - 1]) / (wavs[hi] - wavs[hi - 1])
+        use = [(float(wavs[hi - 1]), 1 - t), (float(wavs[hi]), t)]
+    else:
+        raise ValueError(f"Wavelength {wav:g} um is outside the bend scan ({wavs[0]:g}-{wavs[-1]:g} um) in {mode_dir}")
+
+    total, used = 0.0, {}
+    for w, weight in use:
+        radii = np.array(sorted({r for r, w2 in points if abs(w2 - w) < 5e-4}))
+        if radius < radii[0] * (1 - 1e-9):
+            raise ValueError(f"Radius {radius:g} um is below the smallest scanned radius at {w:g} um ({radii[0]:g} um); "
+                             f"the offset is not extrapolated toward small radii")
+        q = np.array([_straight_offset_exact(float(r), w, *args)[0] * r for r in radii])        # offset * R
+        if radius > radii[-1] * (1 + 1e-9):
+            warnings.warn(f"Radius {radius:g} um is above the largest scanned radius at {w:g} um ({radii[-1]:g} um): "
+                          f"the offset is extrapolated as 1/R from it")
+            value = q[-1] / radius
+        else:
+            value = float(interp_pchip(radii, q, [radius])[0]) / radius
+        total += weight * value
+        used[w] = radii
     if not details:
-        return s
-    return dict(offset=s,
-                centroid_shift=-(mode_centroid_x(bend) - mode_centroid_x(regrid(ref, bend))),
-                eta_no_offset=eta0, eta_offset=eta1)
+        return total
+    return dict(offset=float(total), interpolated=True, wavelengths=list(used), radii={w: [float(x) for x in r] for w, r in used.items()})
 
 
 def mirror_x(f: FieldData) -> FieldData:
@@ -245,7 +297,7 @@ def bend_offsets(radii, directions, wav, mode_dir=BEND_MODE_DIR, root=BEND_MODE_
 #    a whole S-bend, as a dB value and as a fraction of the power.
 # --------------------------------------------------------------------------- #
 
-BEND_LOSS_CSV = (r"D:\DATA\ActivePIC\SingleWaveguideConvergence\StraightWaveguide_simulatedBend_neff_table"
+BEND_LOSS_CSV = (r"D:\DATA\ETL_PIC\simulation\rsoft_lib\StraightWaveguide_simulatedBend_neff_table"
                  r"\StraightWaveguide_simulatedBend_bendloss_dB_per_cm.csv")
 
 
@@ -339,3 +391,146 @@ def build_bend_loss_table(radii, wavs, mode_dir=BEND_MODE_DIR, root=BEND_MODE_RO
     if csv_path:
         df.to_csv(csv_path, index=False)
     return df
+
+
+# --------------------------------------------------------------------------- #
+# n_eff of the bend mode as a function of radius and wavelength
+#
+# 1. build_bend_neff_table reads Re and Im n_eff of the TE bend mode at each (radius, wavelength) of the FemSIM scan.
+# 2. bend_neff interpolates it. The real part is interpolated as the shift from the straight guide's n_eff times R^2 (which varies
+#    slowly with R, so a table of a few radii serves), and the loss as ln|Im n_eff| (loss falls roughly exponentially with R).
+#    Above the largest tabulated radius the shift is continued as 1/R^2 and ln|Im n_eff| linearly: these values are extrapolated and
+#    flagged.
+# --------------------------------------------------------------------------- #
+
+BEND_NEFF_CSV = (r"D:\DATA\ETL_PIC\simulation\rsoft_lib\StraightWaveguide_simulatedBend_neff_table"
+                 r"\StraightWaveguide_simulatedBend_neff.csv")
+
+
+def build_bend_neff_table(radii=None, wavs=None, mode_dir=BEND_MODE_DIR, root=BEND_MODE_ROOT, csv_path=None):
+    """n_eff table of the TE bend mode from the FemSIM bend scan, as a DataFrame (saved to csv_path if given).
+
+    For each (radius, wavelength) it finds the fundamental TE mode (te_mode_index) and reads Re n_eff (column 1) and Im n_eff
+    (column 2) of its row in the .nef file. radii and wavs default to everything found in mode_dir. Columns: radius, wavelength,
+    neff_real, neff_imag, loss_dB_per_cm. Missing runs are skipped."""
+    import pandas as pd
+
+    pattern = re.compile(rf"^{re.escape(root)}_Wav(\d+p\d+)_Radius(\d+p\d+)\.nef$", re.IGNORECASE)
+    if radii is None or wavs is None:
+        found = [(parse_param(h.group(1)), parse_param(h.group(2))) for h in map(pattern.match, os.listdir(mode_dir)) if h]
+        if not found:
+            raise FileNotFoundError(f"No {root}_Wav*_Radius*.nef files in {mode_dir}")
+        wavs = sorted({w for w, _ in found}) if wavs is None else wavs
+        radii = sorted({r for _, r in found}) if radii is None else radii
+    rows, skipped = [], 0
+    for R in radii:
+        for wav in wavs:
+            try:
+                k = te_mode_index(R, wav, mode_dir, root)
+                nef = np.atleast_2d(np.genfromtxt(bend_stem(R, wav, mode_dir, root) + ".nef"))
+                re_, im = float(nef[k, 1]), (float(nef[k, 2]) if nef.shape[1] > 2 else 0.0)
+            except (FileNotFoundError, OSError, IndexError, ValueError):
+                skipped += 1
+                continue
+            rows.append(dict(radius=float(R), wavelength=float(wav), neff_real=re_, neff_imag=im,
+                             loss_dB_per_cm=float(loss_dB_per_cm_from_neff_imag(im, wav))))
+    if skipped:
+        print(f"Warning: {skipped} (radius, wavelength) combinations were skipped (missing or unreadable files).")
+    df = pd.DataFrame(rows)
+    if csv_path:
+        df.to_csv(csv_path, index=False)
+    return df
+
+
+@lru_cache(maxsize=4)
+def load_bend_neff_table(csv_path=BEND_NEFF_CSV, mode_dir=BEND_MODE_DIR, root=BEND_MODE_ROOT):
+    """The bend n_eff table: the CSV if it exists, otherwise built from the .nef files of mode_dir (this takes a while: it reads
+    the mode fields to find the TE mode; save it with build_bend_neff_table(csv_path=...) to avoid that). Cached; call
+    load_bend_neff_table.cache_clear() after regenerating it."""
+    import pandas as pd
+    if os.path.exists(csv_path):
+        return pd.read_csv(csv_path)
+    print(f"{csv_path} not found: building the bend n_eff table from the .nef files in {mode_dir}")
+    return build_bend_neff_table(mode_dir=mode_dir, root=root)
+
+
+class BendModel:
+    """Complex n_eff of the TE bend mode at any radius and wavelength, from a table (the DataFrame of build_bend_neff_table).
+
+    n_eff(R, wav) = n_straight(wav, table_width) + shift(R, wav) + i |Im n_eff|, with the shift and the imaginary part interpolated
+    from the table as described above. n_eff is the value the FemSIM bend mode reports; the phase along the guide's centerline
+    is then taken as 2 pi / wav * n_eff * (arc length), which assumes that n_eff refers to the guide's center (not checked)."""
+
+    def __init__(self, table, straight=None, table_width=3.4):
+        self.table_width = table_width
+        self.straight = straight or straight_model()
+        self.rows = {}
+        for R, sub in table.groupby("radius"):
+            sub = sub.sort_values("wavelength")
+            wv = sub.wavelength.to_numpy(float)
+            ns = self.straight.neff(wv, table_width)[0].real
+            shift = (sub.neff_real.to_numpy(float) - ns) * float(R) ** 2
+            ln_im = np.log(np.maximum(np.abs(sub.neff_imag.to_numpy(float)), 1e-30))
+            self.rows[float(R)] = (wv, shift, ln_im)
+        self.radii = np.array(sorted(self.rows))
+        self.wavelengths = np.array(sorted({w for wv, _, _ in self.rows.values() for w in wv}))
+        self._grid_key, self._grid_val = None, None
+
+    def _grid(self, lams):
+        """The interpolated shift*R^2 and ln|Im n_eff| of every table radius at the wavelengths lams: two arrays (n_radii, len(lams)),
+        NaN where the radius's own table does not cover the wavelength. Kept for the latest lams only."""
+        key = lams.tobytes()
+        if self._grid_key != key:
+            q, lm = np.empty((len(self.radii), len(lams))), np.empty((len(self.radii), len(lams)))
+            for k, R in enumerate(self.radii):
+                wv, shift, ln_im = self.rows[R]
+                q[k], lm[k] = interp_pchip(wv, shift, lams), interp_pchip(wv, ln_im, lams)
+            self._grid_key, self._grid_val = key, (q, lm)
+        return self._grid_val
+
+    def neff(self, radius, wav):
+        """Returns (neff, status): the complex n_eff, and status 0 inside the table, 1 for a radius above the largest tabulated one
+        (extrapolated), -1 for one below the smallest (the value at the smallest radius is used). Vectorized over the wavelengths."""
+        from scipy.interpolate import PchipInterpolator
+        radius, wav = np.broadcast_arrays(np.asarray(radius, float), np.asarray(wav, float))
+        flat_w, flat_r = wav.ravel(), radius.ravel()
+        out = np.empty(flat_w.shape, complex)
+        status = np.zeros(flat_w.shape, int)
+        lams, inverse = np.unique(flat_w, return_inverse=True)
+        q, lm = self._grid(lams)
+        full = ~np.isnan(q).any(axis=0)
+        if not full.any():
+            raise ValueError(f"Wavelengths {lams[0]:g}-{lams[-1]:g} um are outside the bend table ({self.wavelengths[0]:g}-{self.wavelengths[-1]:g} um)")
+        if not full.all():
+            raise ValueError(f"Wavelength {lams[~full][0]:g} um is not covered by the bend table at every radius "
+                             f"({self.wavelengths[0]:g}-{self.wavelengths[-1]:g} um)")
+        n_straight = self.straight.neff(lams, self.table_width)[0].real
+        rs = self.radii
+        below, above = flat_r < rs[0] * (1 - 1e-9), flat_r > rs[-1] * (1 + 1e-9)
+        rc = np.clip(flat_r, rs[0], rs[-1])
+        ur, ir = np.unique(rc, return_inverse=True)
+        if len(rs) == 1:
+            qv, lv = q[0][inverse], lm[0][inverse]
+        else:
+            qv = PchipInterpolator(rs, q, axis=0)(ur)[ir, inverse]
+            lv = PchipInterpolator(rs, lm, axis=0)(ur)[ir, inverse]
+            slope = np.minimum((lm[-1] - lm[-2]) / (rs[-1] - rs[-2]), 0.0)         # per wavelength, for radii above the table
+            lv = np.where(above, lm[-1][inverse] + slope[inverse] * (flat_r - rs[-1]), lv)
+        shift = qv / np.where(above, flat_r, rc) ** 2
+        out = n_straight[inverse] + shift + 1j * np.exp(lv)
+        status = np.where(above, 1, np.where(below, -1, 0))
+        return out.reshape(wav.shape), status.reshape(wav.shape)
+
+
+@lru_cache(maxsize=4)
+def bend_model(csv_path=BEND_NEFF_CSV, mode_dir=BEND_MODE_DIR, root=BEND_MODE_ROOT, straight_dir=MODE_LIB_DIR, table_width=3.4):
+    """The BendModel of the bend scan, built once (bend_model.cache_clear() after regenerating the tables)."""
+    return BendModel(load_bend_neff_table(csv_path, mode_dir, root), straight_model(straight_dir), table_width)
+
+
+def bend_neff(radius, wav, csv_path=BEND_NEFF_CSV, mode_dir=BEND_MODE_DIR, root=BEND_MODE_ROOT, straight_dir=MODE_LIB_DIR,
+              table_width=3.4, return_status=False):
+    """Complex n_eff of the TE bend mode at this radius (um) and wavelength (um), interpolated in the FemSIM bend scan (see BendModel);
+    Im n_eff is the loss. return_status=True also returns 0 (inside the table), 1 (radius above it, extrapolated) or -1 (below it)."""
+    n, status = bend_model(csv_path, mode_dir, root, straight_dir, table_width).neff(radius, wav)
+    return (n[()], status[()]) if return_status else n[()]
