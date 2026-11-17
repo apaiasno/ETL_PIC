@@ -9,6 +9,9 @@ simulation/**
 !simulation/**/
 !simulation/**/*.py
 !simulation/**/*.ipynb
+!simulation/NullingPIC_Gen2_sims/P-*/*.ind
+!simulation/NullingPIC_Gen2_sims/P-*/*.gds
+simulation/**/obsolete/
 
 # Exclusions (must stay below the whitelist rules)
 lab/Data/
@@ -18,3 +21,4 @@ lab/ControlCode/VendorResources/
 **/__pycache__/
 **/.ipynb_checkpoints/
 simulation/NullingPIC_Gen1_sims/Device6a_I18_1x5Tri/Device6a_I18_1x5Tri.ipynb
+obsolete/

@@ -1,0 +1,2992 @@
+
+Circuit_xmax = 3761.700000
+Circuit_xmin = -51.700000
+Contrast = 1.02
+Grid_Edge = 0.5
+Grid_Size = 0.1
+Launch_filename_1 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+Launch_filename_2 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+Launch_filename_3 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+Launch_filename_4 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+Launch_filename_5 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+Monitor_filename_1 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+Monitor_filename_2 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+Monitor_filename_3 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+Monitor_filename_4 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+Monitor_filename_5 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+PML_width = 5.0
+Padding = 20.0
+Step_z = 0.1
+alpha = 0
+background_alpha = nimag($background_material)
+background_index = nreal($background_material)
+background_material = SiO2
+bc_type = BC_PML
+boundary_max = Circuit_xmax+Padding
+boundary_max_y = (height/2+Padding)
+boundary_min = Circuit_xmin-Padding
+boundary_min_y = -(height/2+Padding)
+cad_aspectratio_y = 1
+default_material = DopedSiO2
+delta = 0.1
+dimension = 3
+eim = 0
+free_space_wavelength = 1.55
+grid_edge_factor_x = Grid_Edge
+grid_edge_factor_y = Grid_Edge
+grid_nonuniform = 1
+grid_size = Grid_Size
+grid_size_y = Grid_Size
+height = 3.4
+k0 = (2*pi)/free_space_wavelength
+launch_align_file = 1
+launch_file = $Launch_filename_1
+launch_file_explicit = 1
+launch_normalization = 2
+launch_position = 0
+launch_position_y = 0
+launch_tilt = 1
+launch_type = LAUNCH_FILE
+monitor_file_explicit = 1
+pade_order = 2
+pade_order_warning_3d = 0
+pml_width_x = PML_width
+pml_width_y = PML_width
+sim_tool = ST_BEAMPROP
+slice_display_mode = DISPLAY_CONTOURMAPXZ
+slice_output_format = OUTPUT_AMP_PHASE
+step_size = Step_z
+structure = STRUCT_CHANNEL
+vector = 1
+width = 3.4
+
+
+material 1
+	name = DopedSiO2
+	origin = Path=/RSoft/Dielectrics/SiO2 Date=03/25/2022 Time=10:00
+	comment = Lambda_Min=0.2, Lambda_Max=3.37, Src=J.Opt.Soc.Am/Vol-55/pp-1205
+	optical
+		ni = Contrast*userimag("<rsoftmat>\\SiO2_nk.dat",free_space_wavelength)
+		nr = Contrast*userreal("<rsoftmat>\\SiO2_nk.dat",free_space_wavelength)
+	end optical
+	epsinf = 1
+	num_dsp = 3
+	delta_1 = 5873.621094
+	a_1 = 1
+	b_1 = 0
+	c_1 = 8437.094835
+	delta_2 = 1191.892625
+	a_2 = 1
+	b_2 = 0
+	c_2 = 2921.716498
+	delta_3 = 0.3622641
+	a_3 = 1
+	b_3 = 0
+	c_3 = 0.4036462
+	electro_optic
+		eps_xx = 3.8
+		eps_yy = 3.8
+		eps_zz = 3.8
+	end electro_optic
+	thermo_optic
+		kappa_xx = 1.38*1e-6
+		kappa_yy = 1.38*1e-6
+		kappa_zz = 1.38*1e-6
+		r = 1e-05
+	end thermo_optic
+	stress_optic
+		E = 76.7
+		alpha = 5.4e-07
+		nu = 0.186
+		p1 = 0.16
+		p2 = 0.27
+	end stress_optic
+	semiconductor
+		elem_matfile = Oxide.mat
+		reg_regtype = oxide
+	end semiconductor
+end material
+
+material 2
+	name = SiO2
+	origin = Path=/RSoft/Dielectrics/SiO2 Date=03/25/2022 Time=10:00
+	comment = Lambda_Min=0.2, Lambda_Max=3.37, Src=J.Opt.Soc.Am/Vol-55/pp-1205
+	optical
+		ni = userimag("<rsoftmat>\\SiO2_nk.dat",free_space_wavelength)
+		nr = userreal("<rsoftmat>\\SiO2_nk.dat",free_space_wavelength)
+	end optical
+	epsinf = 1
+	num_dsp = 3
+	delta_1 = 5873.621094
+	a_1 = 1
+	b_1 = 0
+	c_1 = 8437.094835
+	delta_2 = 1191.892625
+	a_2 = 1
+	b_2 = 0
+	c_2 = 2921.716498
+	delta_3 = 0.3622641
+	a_3 = 1
+	b_3 = 0
+	c_3 = 0.4036462
+	electro_optic
+		eps_xx = 3.8
+		eps_yy = 3.8
+		eps_zz = 3.8
+	end electro_optic
+	thermo_optic
+		kappa_xx = 1.38*1e-6
+		kappa_yy = 1.38*1e-6
+		kappa_zz = 1.38*1e-6
+		r = 1e-05
+	end thermo_optic
+	stress_optic
+		E = 76.7
+		alpha = 5.4e-07
+		nu = 0.186
+		p1 = 0.16
+		p2 = 0.27
+	end stress_optic
+	semiconductor
+		elem_matfile = Oxide.mat
+		reg_regtype = oxide
+	end semiconductor
+end material
+
+
+segment 1
+	extended = 1
+	begin.x = 0.000000
+	begin.z = 0.000000
+	end.x = 0.000000
+	end.z = 100.000000
+end segment
+
+segment 2
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 64150.38752
+	arc_iangle = 0
+	arc_fangle = 0.03840042444
+	begin.x = 0.000000
+	begin.z = 100.000000
+	end.x = 0.014408
+	end.z = 142.994474
+end segment
+
+segment 3
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 21383.4625
+	arc_iangle = 0.03840042444
+	arc_fangle = 0.1536016978
+	begin.x = 0.009608
+	begin.z = 142.994476
+	end.x = 0.081646
+	end.z = 185.988886
+end segment
+
+segment 4
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 12830.0775
+	arc_iangle = 0.1536016978
+	arc_fangle = 0.34560382
+	begin.x = 0.076846
+	begin.z = 185.988893
+	end.x = 0.264147
+	end.z = 228.982943
+end segment
+
+segment 5
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 9164.341065
+	arc_iangle = 0.34560382
+	arc_fangle = 0.6144067911
+	begin.x = 0.259347
+	begin.z = 228.982964
+	end.x = 0.619536
+	end.z = 271.975893
+end segment
+
+segment 6
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 7127.820823
+	arc_iangle = 0.6144067911
+	arc_fangle = 0.960010611
+	begin.x = 0.614736
+	begin.z = 271.975933
+	end.x = 1.205434
+	end.z = 314.966287
+end segment
+
+segment 7
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 5831.853396
+	arc_iangle = 0.960010611
+	arc_fangle = 1.38241528
+	begin.x = 1.200634
+	begin.z = 314.966353
+	end.x = 2.079444
+	end.z = 357.951751
+end segment
+
+segment 8
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 4934.645177
+	arc_iangle = 1.38241528
+	arc_fangle = 1.881620798
+	begin.x = 2.074645
+	begin.z = 357.951849
+	end.x = 3.299134
+	end.z = 400.928750
+end segment
+
+segment 9
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 4276.692482
+	arc_iangle = 1.881620798
+	arc_fangle = 2.457627164
+	begin.x = 3.294336
+	begin.z = 400.928886
+	end.x = 4.922015
+	end.z = 443.892361
+end segment
+
+segment 10
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3773.552185
+	arc_iangle = 2.457627164
+	arc_fangle = 3.11043438
+	begin.x = 4.917219
+	begin.z = 443.892542
+	end.x = 7.005509
+	end.z = 486.836042
+end segment
+
+segment 11
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3376.33616
+	arc_iangle = 3.11043438
+	arc_fangle = 3.840042444
+	begin.x = 7.000715
+	begin.z = 486.836275
+	end.x = 9.606900
+	end.z = 529.751399
+end segment
+
+segment 12
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3054.780331
+	arc_iangle = 3.840042444
+	arc_fangle = 4.646451357
+	begin.x = 9.602109
+	begin.z = 529.751690
+	end.x = 12.783285
+	end.z = 572.627961
+end segment
+
+segment 13
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2789.147253
+	arc_iangle = 4.646451357
+	arc_fangle = 5.52966112
+	begin.x = 12.778498
+	begin.z = 572.628316
+	end.x = 16.591497
+	end.z = 615.452953
+end segment
+
+segment 14
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2566.015468
+	arc_iangle = 5.52966112
+	arc_fangle = 6.489671731
+	begin.x = 16.586716
+	begin.z = 615.453378
+	end.x = 21.088024
+	end.z = 658.211068
+end segment
+
+segment 15
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2375.940243
+	arc_iangle = 6.489671731
+	arc_fangle = 7.526483191
+	begin.x = 21.083250
+	begin.z = 658.211570
+	end.x = 26.328904
+	end.z = 700.884252
+end segment
+
+segment 16
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2212.08229
+	arc_iangle = 7.526483191
+	arc_fangle = 8.640095499
+	begin.x = 26.324139
+	begin.z = 700.884837
+	end.x = 32.369604
+	end.z = 743.451481
+end segment
+
+segment 17
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2069.367299
+	arc_iangle = 8.640095499
+	arc_fangle = 9.830508657
+	begin.x = 32.364852
+	begin.z = 743.452156
+	end.x = 39.264884
+	end.z = 785.888556
+end segment
+
+segment 18
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1943.951094
+	arc_iangle = 9.830508657
+	arc_fangle = 11.09772266
+	begin.x = 39.260147
+	begin.z = 785.889326
+	end.x = 47.068630
+	end.z = 828.167894
+end segment
+
+segment 19
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1832.868169
+	arc_iangle = 11.09772266
+	arc_fangle = 12.44173752
+	begin.x = 47.063910
+	begin.z = 828.168765
+	end.x = 55.833674
+	end.z = 870.258330
+end segment
+
+segment 20
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1733.794209
+	arc_iangle = 12.44173752
+	arc_fangle = 13.86255322
+	begin.x = 55.828975
+	begin.z = 870.259309
+	end.x = 65.611586
+	end.z = 912.124937
+end segment
+
+segment 21
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1644.881681
+	arc_iangle = 13.86255322
+	arc_fangle = 15.36016978
+	begin.x = 65.606912
+	begin.z = 912.126029
+	end.x = 76.452443
+	end.z = 953.728844
+end segment
+
+segment 22
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1564.643545
+	arc_iangle = 15.36016978
+	arc_fangle = 16.93458718
+	begin.x = 76.447799
+	begin.z = 953.730054
+	end.x = 88.404575
+	end.z = 995.027078
+end segment
+
+segment 23
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1491.869421
+	arc_iangle = 16.93458718
+	arc_fangle = 18.58580543
+	begin.x = 88.399964
+	begin.z = 995.028413
+	end.x = 101.514278
+	end.z = 1035.972421
+end segment
+
+segment 24
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1427.790548
+	arc_iangle = 18.58580543
+	arc_fangle = 20.19075845
+	begin.x = 101.509707
+	begin.z = 1035.973885
+	end.x = 114.786296
+	end.z = 1073.699427
+end segment
+
+segment 25
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1399.99994
+	arc_iangle = 20.19075845
+	arc_fangle = 60.4563345
+	begin.x = 114.782656
+	begin.z = 1073.700707
+	end.x = 738.429408
+	end.z = 1808.467358
+end segment
+
+segment 26
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1430.74183
+	arc_iangle = 60.4563345
+	arc_fangle = 62.17810006
+	begin.x = 738.429408
+	begin.z = 1808.467358
+	end.x = 776.146631
+	end.z = 1829.102206
+end segment
+
+segment 27
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1497.538849
+	arc_iangle = 62.17810006
+	arc_fangle = 63.82306708
+	begin.x = 776.148934
+	begin.z = 1829.097995
+	end.x = 814.456176
+	end.z = 1848.616018
+end segment
+
+segment 28
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1570.880735
+	arc_iangle = 63.82306708
+	arc_fangle = 65.39123325
+	begin.x = 814.458354
+	begin.z = 1848.611742
+	end.x = 853.297871
+	end.z = 1867.048161
+end segment
+
+segment 29
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1651.776395
+	arc_iangle = 65.39123325
+	arc_fangle = 66.88259857
+	begin.x = 853.299929
+	begin.z = 1867.043824
+	end.x = 892.617904
+	end.z = 1884.436854
+end segment
+
+segment 30
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1741.456179
+	arc_iangle = 66.88259857
+	arc_fangle = 68.29716304
+	begin.x = 892.619845
+	begin.z = 1884.432464
+	end.x = 932.366314
+	end.z = 1900.822989
+end segment
+
+segment 31
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1841.432974
+	arc_iangle = 68.29716304
+	arc_fangle = 69.63492666
+	begin.x = 932.368144
+	begin.z = 1900.818552
+	end.x = 972.496896
+	end.z = 1916.249828
+end segment
+
+segment 32
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1953.588246
+	arc_iangle = 69.63492666
+	arc_fangle = 70.89588944
+	begin.x = 972.498619
+	begin.z = 1916.245348
+	end.x = 1012.967078
+	end.z = 1930.762725
+end segment
+
+segment 33
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2080.291561
+	arc_iangle = 70.89588944
+	arc_fangle = 72.08005136
+	begin.x = 1012.968698
+	begin.z = 1930.758207
+	end.x = 1053.737787
+	end.z = 1944.408872
+end segment
+
+segment 34
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2224.569852
+	arc_iangle = 72.08005136
+	arc_fangle = 73.18741244
+	begin.x = 1053.739311
+	begin.z = 1944.404320
+	end.x = 1094.773298
+	end.z = 1957.237067
+end segment
+
+segment 35
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2390.35236
+	arc_iangle = 73.18741244
+	arc_fangle = 74.21797267
+	begin.x = 1094.774730
+	begin.z = 1957.232486
+	end.x = 1136.041068
+	end.z = 1969.297502
+end segment
+
+segment 36
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2582.833922
+	arc_iangle = 74.21797267
+	arc_fangle = 75.17173205
+	begin.x = 1136.042414
+	begin.z = 1969.292895
+	end.x = 1177.511558
+	end.z = 1980.641573
+end segment
+
+segment 37
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2809.029159
+	arc_iangle = 75.17173205
+	arc_fangle = 76.04869058
+	begin.x = 1177.512825
+	begin.z = 1980.636944
+	end.x = 1219.158050
+	end.z = 1991.321709
+end segment
+
+segment 38
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3078.645802
+	arc_iangle = 76.04869058
+	arc_fangle = 76.84884826
+	begin.x = 1219.159242
+	begin.z = 1991.317060
+	end.x = 1260.956448
+	end.z = 2001.391216
+end segment
+
+segment 39
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3405.514375
+	arc_iangle = 76.84884826
+	arc_fangle = 77.57220509
+	begin.x = 1260.957572
+	begin.z = 2001.386550
+	end.x = 1302.885080
+	end.z = 2010.904145
+end segment
+
+segment 40
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3810.036806
+	arc_iangle = 77.57220509
+	arc_fangle = 78.21876108
+	begin.x = 1302.886142
+	begin.z = 2010.899464
+	end.x = 1344.924488
+	end.z = 2019.915171
+end segment
+
+segment 41
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 4323.61544
+	arc_iangle = 78.21876108
+	arc_fangle = 78.78851621
+	begin.x = 1344.925494
+	begin.z = 2019.910478
+	end.x = 1387.057215
+	end.z = 2028.479487
+end segment
+
+segment 42
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 4997.222199
+	arc_iangle = 78.78851621
+	arc_fangle = 79.2814705
+	begin.x = 1387.058172
+	begin.z = 2028.474783
+	end.x = 1429.267592
+	end.z = 2036.652713
+end segment
+
+segment 43
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 5919.456345
+	arc_iangle = 79.2814705
+	arc_fangle = 79.69762393
+	begin.x = 1429.268505
+	begin.z = 2036.648001
+	end.x = 1471.541513
+	end.z = 2044.490817
+end segment
+
+segment 44
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 7259.122786
+	arc_iangle = 79.69762393
+	arc_fangle = 80.03697652
+	begin.x = 1471.542388
+	begin.z = 2044.486098
+	end.x = 1513.866216
+	end.z = 2052.050044
+end segment
+
+segment 45
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 9382.539662
+	arc_iangle = 80.03697652
+	arc_fangle = 80.29952826
+	begin.x = 1513.867060
+	begin.z = 2052.045318
+	end.x = 1556.230059
+	end.z = 2059.386855
+end segment
+
+segment 46
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 13261.85895
+	arc_iangle = 80.29952826
+	arc_fangle = 80.48527915
+	begin.x = 1556.230879
+	begin.z = 2059.382125
+	end.x = 1598.622294
+	end.z = 2066.557878
+end segment
+
+segment 47
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 22610.38248
+	arc_iangle = 80.48527915
+	arc_fangle = 80.59422919
+	begin.x = 1598.623095
+	begin.z = 2066.553145
+	end.x = 1641.032836
+	end.z = 2073.619856
+end segment
+
+segment 48
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 76624.07398
+	arc_iangle = 80.59422919
+	arc_fangle = 80.62637839
+	begin.x = 1641.033624
+	begin.z = 2073.615121
+	end.x = 1683.452041
+	end.z = 2080.629607
+end segment
+
+segment 49
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 55169.33326
+	arc_iangle = 80.62637839
+	arc_fangle = 80.58172673
+	begin.x = 1683.452824
+	begin.z = 2080.624871
+	end.x = 1725.870474
+	end.z = 2087.643985
+end segment
+
+segment 50
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 20282.84311
+	arc_iangle = 80.58172673
+	arc_fangle = 80.46027422
+	begin.x = 1725.871257
+	begin.z = 2087.639250
+	end.x = 1768.278681
+	end.z = 2094.719841
+end segment
+
+segment 51
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 12425.5255
+	arc_iangle = 80.46027422
+	arc_fangle = 80.26202087
+	begin.x = 1768.279472
+	begin.z = 2094.715106
+	end.x = 1810.666963
+	end.z = 2101.913983
+end segment
+
+segment 52
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 8956.060586
+	arc_iangle = 80.26202087
+	arc_fangle = 79.98696667
+	begin.x = 1810.667767
+	begin.z = 2101.909251
+	end.x = 1853.025143
+	end.z = 2109.283138
+end segment
+
+segment 53
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 7001.184412
+	arc_iangle = 79.98696667
+	arc_fangle = 79.63511162
+	begin.x = 1853.025966
+	begin.z = 2109.278409
+	end.x = 1895.342341
+	end.z = 2116.883910
+end segment
+
+segment 54
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 5746.805534
+	arc_iangle = 79.63511162
+	arc_fangle = 79.20645571
+	begin.x = 1895.343190
+	begin.z = 2116.879186
+	end.x = 1937.606750
+	end.z = 2124.772730
+end segment
+
+segment 55
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 4873.615996
+	arc_iangle = 79.20645571
+	arc_fangle = 78.70099897
+	begin.x = 1937.607631
+	begin.z = 2124.768011
+	end.x = 1979.805402
+	end.z = 2133.005800
+end segment
+
+segment 56
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 4230.777071
+	arc_iangle = 78.70099897
+	arc_fangle = 78.11874137
+	begin.x = 1979.806322
+	begin.z = 2133.001088
+	end.x = 2021.923955
+	end.z = 2141.639036
+end segment
+
+segment 57
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3737.759684
+	arc_iangle = 78.11874137
+	arc_fangle = 77.45968292
+	begin.x = 2021.924919
+	begin.z = 2141.634334
+	end.x = 2063.946462
+	end.z = 2150.727995
+end segment
+
+segment 58
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3347.653693
+	arc_iangle = 77.45968292
+	arc_fangle = 76.72382362
+	begin.x = 2063.947477
+	begin.z = 2150.723304
+	end.x = 2105.855155
+	end.z = 2160.327792
+end segment
+
+segment 59
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3031.28202
+	arc_iangle = 76.72382362
+	arc_fangle = 75.91116348
+	begin.x = 2105.856227
+	begin.z = 2160.323113
+	end.x = 2147.630230
+	end.z = 2170.493006
+end segment
+
+segment 60
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2769.544812
+	arc_iangle = 75.91116348
+	arc_fangle = 75.02170248
+	begin.x = 2147.631365
+	begin.z = 2170.488342
+	end.x = 2189.249635
+	end.z = 2181.277576
+end segment
+
+segment 61
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2549.414628
+	arc_iangle = 75.02170248
+	arc_fangle = 74.05544064
+	begin.x = 2189.250839
+	begin.z = 2181.272929
+	end.x = 2230.688861
+	end.z = 2192.734674
+end segment
+
+segment 62
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2361.700875
+	arc_iangle = 74.05544064
+	arc_fangle = 73.01237795
+	begin.x = 2230.690140
+	begin.z = 2192.730047
+	end.x = 2271.920744
+	end.z = 2204.916571
+end segment
+
+segment 63
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2199.734143
+	arc_iangle = 73.01237795
+	arc_fangle = 71.89251441
+	begin.x = 2271.922104
+	begin.z = 2204.911967
+	end.x = 2312.915268
+	end.z = 2217.874478
+end segment
+
+segment 64
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2058.557171
+	arc_iangle = 71.89251441
+	arc_fangle = 70.69585002
+	begin.x = 2312.916715
+	begin.z = 2217.869901
+	end.x = 2353.639385
+	end.z = 2231.658373
+end segment
+
+segment 65
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1934.408557
+	arc_iangle = 70.69585002
+	arc_fangle = 69.42238478
+	begin.x = 2353.640925
+	begin.z = 2231.653827
+	end.x = 2394.056836
+	end.z = 2246.316808
+end segment
+
+segment 66
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1824.382668
+	arc_iangle = 69.42238478
+	arc_fangle = 68.07211869
+	begin.x = 2394.058473
+	begin.z = 2246.312296
+	end.x = 2434.127989
+	end.z = 2261.896691
+end segment
+
+segment 67
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1726.199366
+	arc_iangle = 68.07211869
+	arc_fangle = 66.64505176
+	begin.x = 2434.129728
+	begin.z = 2261.892218
+	end.x = 2473.809689
+	end.z = 2278.443053
+end segment
+
+segment 68
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1638.044286
+	arc_iangle = 66.64505176
+	arc_fangle = 65.14118397
+	begin.x = 2473.811537
+	begin.z = 2278.438623
+	end.x = 2513.055128
+	end.z = 2295.998787
+end segment
+
+segment 69
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1558.455688
+	arc_iangle = 65.14118397
+	arc_fangle = 63.56051534
+	begin.x = 2513.057089
+	begin.z = 2295.994405
+	end.x = 2551.813726
+	end.z = 2314.604370
+end segment
+
+segment 70
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1486.242758
+	arc_iangle = 63.56051534
+	arc_fangle = 61.90304585
+	begin.x = 2551.815804
+	begin.z = 2314.600043
+	end.x = 2590.031035
+	end.z = 2334.297559
+end segment
+
+segment 71
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1425.566383
+	arc_iangle = 61.90304585
+	arc_fangle = 60.4563345
+	begin.x = 2590.033234
+	begin.z = 2334.293292
+	end.x = 2621.569235
+	end.z = 2351.644916
+end segment
+
+segment 72
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1399.99994
+	arc_iangle = 60.4563345
+	arc_fangle = 20.19075845
+	begin.x = 2621.570592
+	begin.z = 2351.642449
+	end.x = 3245.217344
+	end.z = 3086.409099
+end segment
+
+segment 73
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1430.010183
+	arc_iangle = 20.19075845
+	arc_fangle = 18.46811197
+	begin.x = 3245.217344
+	begin.z = 3086.409099
+	end.x = 3259.447946
+	end.z = 3126.978493
+end segment
+
+segment 74
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1496.726294
+	arc_iangle = 18.46811197
+	arc_fangle = 16.82225192
+	begin.x = 3259.443422
+	begin.z = 3126.980080
+	end.x = 3272.475522
+	end.z = 3167.950340
+end segment
+
+segment 75
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1569.986665
+	arc_iangle = 16.82225192
+	arc_fangle = 15.25319272
+	begin.x = 3272.470948
+	begin.z = 3167.951794
+	end.x = 3284.348668
+	end.z = 3209.271635
+end segment
+
+segment 76
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1650.787899
+	arc_iangle = 15.25319272
+	arc_fangle = 13.76093436
+	begin.x = 3284.344055
+	begin.z = 3209.272961
+	end.x = 3295.113839
+	end.z = 3250.895458
+end segment
+
+segment 77
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1740.357468
+	arc_iangle = 13.76093436
+	arc_fangle = 12.34547686
+	begin.x = 3295.109192
+	begin.z = 3250.896660
+	end.x = 3304.819496
+	end.z = 3292.779126
+end segment
+
+segment 78
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1840.204533
+	arc_iangle = 12.34547686
+	arc_fangle = 11.0068202
+	begin.x = 3304.814820
+	begin.z = 3292.780210
+	end.x = 3313.515828
+	end.z = 3334.884050
+end segment
+
+segment 79
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1952.205664
+	arc_iangle = 11.0068202
+	arc_fangle = 9.744964391
+	begin.x = 3313.511128
+	begin.z = 3334.885022
+	end.x = 3321.254504
+	end.z = 3377.175569
+end segment
+
+segment 80
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2078.723896
+	arc_iangle = 9.744964391
+	arc_fangle = 8.559909432
+	begin.x = 3321.249782
+	begin.z = 3377.176434
+	end.x = 3328.088434
+	end.z = 3419.622776
+end segment
+
+segment 81
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2222.77729
+	arc_iangle = 8.559909432
+	arc_fangle = 7.451655322
+	begin.x = 3328.083695
+	begin.z = 3419.623539
+	end.x = 3334.071573
+	end.z = 3462.198329
+end segment
+
+segment 82
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2388.28279
+	arc_iangle = 7.451655322
+	arc_fangle = 6.420202061
+	begin.x = 3334.066820
+	begin.z = 3462.198997
+	end.x = 3339.258735
+	end.z = 3504.878256
+end segment
+
+segment 83
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2580.4178
+	arc_iangle = 6.420202061
+	arc_fangle = 5.465549648
+	begin.x = 3339.253970
+	begin.z = 3504.878836
+	end.x = 3343.705432
+	end.z = 3547.641749
+end segment
+
+segment 84
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2806.17155
+	arc_iangle = 5.465549648
+	arc_fangle = 4.587698085
+	begin.x = 3343.700658
+	begin.z = 3547.642246
+	end.x = 3347.467739
+	end.z = 3590.470951
+end segment
+
+segment 85
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3075.213644
+	arc_iangle = 4.587698085
+	arc_fangle = 3.786647371
+	begin.x = 3347.462957
+	begin.z = 3590.471372
+	end.x = 3350.602170
+	end.z = 3633.350741
+end segment
+
+segment 86
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3401.31522
+	arc_iangle = 3.786647371
+	arc_fangle = 3.062397505
+	begin.x = 3350.597383
+	begin.z = 3633.351091
+	end.x = 3353.165581
+	end.z = 3676.268510
+end segment
+
+segment 87
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3804.781583
+	arc_iangle = 3.062397505
+	arc_fangle = 2.414948488
+	begin.x = 3353.160789
+	begin.z = 3676.268796
+	end.x = 3355.215083
+	end.z = 3719.213939
+end segment
+
+segment 88
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 4316.849219
+	arc_iangle = 2.414948488
+	arc_fangle = 1.84430032
+	begin.x = 3355.210289
+	begin.z = 3719.214168
+	end.x = 3356.807974
+	end.z = 3762.178772
+end segment
+
+segment 89
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 4988.185631
+	arc_iangle = 1.84430032
+	arc_fangle = 1.350453001
+	begin.x = 3356.803177
+	begin.z = 3762.178950
+	end.x = 3358.001682
+	end.z = 3805.156587
+end segment
+
+segment 90
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 5906.780849
+	arc_iangle = 1.350453001
+	arc_fangle = 0.9334065312
+	begin.x = 3357.996884
+	begin.z = 3805.156720
+	end.x = 3358.853724
+	end.z = 3848.142564
+end segment
+
+segment 91
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 7240.069971
+	arc_iangle = 0.9334065312
+	arc_fangle = 0.5931609099
+	begin.x = 3358.848925
+	begin.z = 3848.142659
+	end.x = 3359.421672
+	end.z = 3891.133259
+end segment
+
+segment 92
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 9350.734443
+	arc_iangle = 0.5931609099
+	arc_fangle = 0.3297161376
+	begin.x = 3359.416872
+	begin.z = 3891.133322
+	end.x = 3359.763129
+	end.z = 3934.126368
+end segment
+
+segment 93
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 13198.40508
+	arc_iangle = 0.3297161376
+	arc_fangle = 0.1430722142
+	begin.x = 3359.758329
+	begin.z = 3934.126406
+	end.x = 3359.935718
+	end.z = 3977.120499
+end segment
+
+segment 94
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 22426.55823
+	arc_iangle = 0.1430722142
+	arc_fangle = 0.03322913959
+	begin.x = 3359.930918
+	begin.z = 3977.120518
+	end.x = 3359.997066
+	end.z = 4020.114938
+end segment
+
+segment 95
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 68961.6666
+	arc_iangle = 0.03322913959
+	arc_fangle = 0
+	begin.x = 3359.992266
+	begin.z = 4020.114945
+	end.x = 3360.003863
+	end.z = 4060.109806
+end segment
+
+segment 96
+	extended = 1
+	begin.x = 3360.000000
+	begin.z = 4060.109807
+	end.x = 3360.000000
+	end.z = 7060.109807
+end segment
+
+segment 97
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 64200.38751
+	arc_iangle = 0
+	arc_fangle = 0.03840042444
+	begin.x = -50.000000
+	begin.z = 100.000000
+	end.x = -49.985581
+	end.z = 143.027985
+end segment
+
+segment 98
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 21433.4625
+	arc_iangle = 0.03840042444
+	arc_fangle = 0.1536016978
+	begin.x = -49.990381
+	begin.z = 143.027986
+	end.x = -49.918174
+	end.z = 186.122928
+end segment
+
+segment 99
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 12880.0775
+	arc_iangle = 0.1536016978
+	arc_fangle = 0.34560382
+	begin.x = -49.922974
+	begin.z = 186.122936
+	end.x = -49.734944
+	end.z = 229.284537
+end segment
+
+segment 100
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 9214.341064
+	arc_iangle = 0.34560382
+	arc_fangle = 0.6144067911
+	begin.x = -49.739744
+	begin.z = 229.284558
+	end.x = -49.377590
+	end.z = 272.512054
+end segment
+
+segment 101
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 7177.820823
+	arc_iangle = 0.6144067911
+	arc_fangle = 0.960010611
+	begin.x = -49.382389
+	begin.z = 272.512094
+	end.x = -48.787548
+	end.z = 315.804015
+end segment
+
+segment 102
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 5881.853396
+	arc_iangle = 0.960010611
+	arc_fangle = 1.38241528
+	begin.x = -48.792347
+	begin.z = 315.804081
+	end.x = -47.906003
+	end.z = 359.158019
+end segment
+
+segment 103
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 4984.645176
+	arc_iangle = 1.38241528
+	arc_fangle = 1.881620798
+	begin.x = -47.910802
+	begin.z = 359.158116
+	end.x = -46.673906
+	end.z = 402.570478
+end segment
+
+segment 104
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 4326.692481
+	arc_iangle = 1.881620798
+	arc_fangle = 2.457627164
+	begin.x = -46.678704
+	begin.z = 402.570615
+	end.x = -45.031995
+	end.z = 446.036388
+end segment
+
+segment 105
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3823.552184
+	arc_iangle = 2.457627164
+	arc_fangle = 3.11043438
+	begin.x = -45.036792
+	begin.z = 446.036569
+	end.x = -42.920831
+	end.z = 489.549075
+end segment
+
+segment 106
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3426.33616
+	arc_iangle = 3.11043438
+	arc_fangle = 3.840042444
+	begin.x = -42.925626
+	begin.z = 489.549308
+	end.x = -40.280845
+	end.z = 533.099960
+end segment
+
+segment 107
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3104.78033
+	arc_iangle = 3.840042444
+	arc_fangle = 4.646451357
+	begin.x = -40.285636
+	begin.z = 533.100251
+	end.x = -37.052391
+	end.z = 576.678312
+end segment
+
+segment 108
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2839.147253
+	arc_iangle = 4.646451357
+	arc_fangle = 5.52966112
+	begin.x = -37.057178
+	begin.z = 576.678667
+	end.x = -33.175825
+	end.z = 620.271005
+end segment
+
+segment 109
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2616.015468
+	arc_iangle = 5.52966112
+	arc_fangle = 6.489671731
+	begin.x = -33.180606
+	begin.z = 620.271430
+	end.x = -28.591588
+	end.z = 663.862273
+end segment
+
+segment 110
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2425.940243
+	arc_iangle = 6.489671731
+	arc_fangle = 7.526483191
+	begin.x = -28.596362
+	begin.z = 663.862776
+	end.x = -23.240318
+	end.z = 707.433474
+end segment
+
+segment 111
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2262.08229
+	arc_iangle = 7.526483191
+	arc_fangle = 8.640095499
+	begin.x = -23.245082
+	begin.z = 707.434059
+	end.x = -17.062970
+	end.z = 750.962843
+end segment
+
+segment 112
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2119.367299
+	arc_iangle = 8.640095499
+	arc_fangle = 9.830508657
+	begin.x = -17.067723
+	begin.z = 750.963518
+	end.x = -10.000972
+	end.z = 794.425265
+end segment
+
+segment 113
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1993.951094
+	arc_iangle = 9.830508657
+	arc_fangle = 11.09772266
+	begin.x = -10.005710
+	begin.z = 794.426036
+	end.x = -1.996385
+	end.z = 837.792042
+end segment
+
+segment 114
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1882.868169
+	arc_iangle = 11.09772266
+	arc_fangle = 12.44173752
+	begin.x = -2.001105
+	begin.z = 837.792913
+	end.x = 7.007895
+	end.z = 881.030667
+end segment
+
+segment 115
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1783.794209
+	arc_iangle = 12.44173752
+	arc_fangle = 13.86255322
+	begin.x = 7.003196
+	begin.z = 881.031646
+	end.x = 17.067922
+	end.z = 924.104615
+end segment
+
+segment 116
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1694.88168
+	arc_iangle = 13.86255322
+	arc_fangle = 15.36016978
+	begin.x = 17.063248
+	begin.z = 924.105707
+	end.x = 28.238455
+	end.z = 966.973136
+end segment
+
+segment 117
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1614.643544
+	arc_iangle = 15.36016978
+	arc_fangle = 16.93458718
+	begin.x = 28.233810
+	begin.z = 966.974347
+	end.x = 40.572679
+	end.z = 1009.591065
+end segment
+
+segment 118
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1541.869421
+	arc_iangle = 16.93458718
+	arc_fangle = 18.58580543
+	begin.x = 40.568068
+	begin.z = 1009.592399
+	end.x = 54.121908
+	end.z = 1051.908646
+end segment
+
+segment 119
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1477.790547
+	arc_iangle = 18.58580543
+	arc_fangle = 20.19075845
+	begin.x = 54.117337
+	begin.z = 1051.910110
+	end.x = 67.858860
+	end.z = 1090.956768
+end segment
+
+segment 120
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1449.99994
+	arc_iangle = 20.19075845
+	arc_fangle = 60.4563345
+	begin.x = 67.855221
+	begin.z = 1090.958048
+	end.x = 713.775072
+	end.z = 1851.966366
+end segment
+
+segment 121
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1480.741829
+	arc_iangle = 60.4563345
+	arc_fangle = 62.17810006
+	begin.x = 713.775072
+	begin.z = 1851.966366
+	end.x = 752.810395
+	end.z = 1873.322338
+end segment
+
+segment 122
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1547.538849
+	arc_iangle = 62.17810006
+	arc_fangle = 63.82306708
+	begin.x = 752.812698
+	begin.z = 1873.318128
+	end.x = 792.398946
+	end.z = 1893.487821
+end segment
+
+segment 123
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1620.880734
+	arc_iangle = 63.82306708
+	arc_fangle = 65.39123325
+	begin.x = 792.401125
+	begin.z = 1893.483544
+	end.x = 832.476876
+	end.z = 1912.506781
+end segment
+
+segment 124
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1701.776394
+	arc_iangle = 65.39123325
+	arc_fangle = 66.88259857
+	begin.x = 832.478934
+	begin.z = 1912.502444
+	end.x = 872.987081
+	end.z = 1930.421969
+end segment
+
+segment 125
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1791.456179
+	arc_iangle = 66.88259857
+	arc_fangle = 68.29716304
+	begin.x = 872.989022
+	begin.z = 1930.417579
+	end.x = 913.876676
+	end.z = 1947.278702
+end segment
+
+segment 126
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1891.432974
+	arc_iangle = 68.29716304
+	arc_fangle = 69.63492666
+	begin.x = 913.878506
+	begin.z = 1947.274265
+	end.x = 955.096865
+	end.z = 1963.124543
+end segment
+
+segment 127
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2003.588245
+	arc_iangle = 69.63492666
+	arc_fangle = 70.89588944
+	begin.x = 955.098587
+	begin.z = 1963.120063
+	end.x = 996.602793
+	end.z = 1978.008997
+end segment
+
+segment 128
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2130.291561
+	arc_iangle = 70.89588944
+	arc_fangle = 72.08005136
+	begin.x = 996.604414
+	begin.z = 1978.004479
+	end.x = 1038.353391
+	end.z = 1991.983239
+end segment
+
+segment 129
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2274.569852
+	arc_iangle = 72.08005136
+	arc_fangle = 73.18741244
+	begin.x = 1038.354915
+	begin.z = 1991.978687
+	end.x = 1080.311192
+	end.z = 2005.099866
+end segment
+
+segment 130
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2440.352359
+	arc_iangle = 73.18741244
+	arc_fangle = 74.21797267
+	begin.x = 1080.312625
+	begin.z = 2005.095284
+	end.x = 1122.442147
+	end.z = 2017.412670
+end segment
+
+segment 131
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2632.833922
+	arc_iangle = 74.21797267
+	arc_fangle = 75.17173205
+	begin.x = 1122.443494
+	begin.z = 2017.408063
+	end.x = 1164.715421
+	end.z = 2028.976435
+end segment
+
+segment 132
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2859.029159
+	arc_iangle = 75.17173205
+	arc_fangle = 76.04869058
+	begin.x = 1164.716688
+	begin.z = 2028.971806
+	end.x = 1207.103188
+	end.z = 2039.846757
+end segment
+
+segment 133
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3128.645802
+	arc_iangle = 76.04869058
+	arc_fangle = 76.84884826
+	begin.x = 1207.104380
+	begin.z = 2039.842108
+	end.x = 1249.580410
+	end.z = 2050.079878
+end segment
+
+segment 134
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3455.514374
+	arc_iangle = 76.84884826
+	arc_fangle = 77.57220509
+	begin.x = 1249.581535
+	begin.z = 2050.075211
+	end.x = 1292.124625
+	end.z = 2059.732545
+end segment
+
+segment 135
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3860.036805
+	arc_iangle = 77.57220509
+	arc_fangle = 78.21876108
+	begin.x = 1292.125687
+	begin.z = 2059.727864
+	end.x = 1334.715712
+	end.z = 2068.861886
+end segment
+
+segment 136
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 4373.61544
+	arc_iangle = 78.21876108
+	arc_fangle = 78.78851621
+	begin.x = 1334.716718
+	begin.z = 2068.857193
+	end.x = 1377.335667
+	end.z = 2077.525297
+end segment
+
+segment 137
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 5047.222199
+	arc_iangle = 78.78851621
+	arc_fangle = 79.2814705
+	begin.x = 1377.336624
+	begin.z = 2077.520594
+	end.x = 1419.968373
+	end.z = 2085.780348
+end segment
+
+segment 138
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 5969.456344
+	arc_iangle = 79.2814705
+	arc_fangle = 79.69762393
+	begin.x = 1419.969285
+	begin.z = 2085.775636
+	end.x = 1462.599362
+	end.z = 2093.684698
+end segment
+
+segment 139
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 7309.122786
+	arc_iangle = 79.69762393
+	arc_fangle = 80.03697652
+	begin.x = 1462.600237
+	begin.z = 2093.679979
+	end.x = 1505.215587
+	end.z = 2101.296024
+end segment
+
+segment 140
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 9432.539662
+	arc_iangle = 80.03697652
+	arc_fangle = 80.29952826
+	begin.x = 1505.216431
+	begin.z = 2101.291299
+	end.x = 1547.805185
+	end.z = 2108.671959
+end segment
+
+segment 141
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 13311.85895
+	arc_iangle = 80.29952826
+	arc_fangle = 80.48527915
+	begin.x = 1547.806004
+	begin.z = 2108.667230
+	end.x = 1590.357243
+	end.z = 2115.870036
+end segment
+
+segment 142
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 22660.38248
+	arc_iangle = 80.48527915
+	arc_fangle = 80.59422919
+	begin.x = 1590.358044
+	begin.z = 2115.865303
+	end.x = 1632.861569
+	end.z = 2122.947641
+end segment
+
+segment 143
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 69011.66661
+	arc_iangle = 80.59422919
+	arc_fangle = 80.6266276
+	begin.x = 1632.862358
+	begin.z = 2122.942906
+	end.x = 1671.362783
+	end.z = 2129.309411
+end segment
+
+segment 144
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1539.209259
+	arc_iangle = 80.6266276
+	arc_fangle = 0
+	begin.x = 1671.341100
+	begin.z = 2129.440775
+	end.x = 2959.863278
+	end.z = 3648.098448
+end segment
+
+segment 145
+	extended = 1
+	begin.x = 2960.000000
+	begin.z = 3648.098448
+	end.x = 2960.000000
+	end.z = 7060.109807
+end segment
+
+segment 146
+	extended = 1
+	begin.x = 3310.000000
+	begin.z = 6060.109807
+	end.x = 3310.000000
+	end.z = 7060.109807
+end segment
+
+segment 147
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 65692.77769
+	arc_iangle = 80.6266276
+	arc_fangle = 80.58912021
+	begin.x = 1681.949751
+	begin.z = 2065.173761
+	end.x = 1724.377557
+	end.z = 2072.191648
+end segment
+
+segment 148
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 21565.5208
+	arc_iangle = 80.58912021
+	arc_fangle = 80.47481197
+	begin.x = 1724.378340
+	begin.z = 2072.186913
+	end.x = 1766.816638
+	end.z = 2079.264310
+end segment
+
+segment 149
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 12905.03113
+	arc_iangle = 80.47481197
+	arc_fangle = 80.28370288
+	begin.x = 1766.817428
+	begin.z = 2079.259576
+	end.x = 1809.256522
+	end.z = 2086.453416
+end segment
+
+segment 150
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 9209.888868
+	arc_iangle = 80.28370288
+	arc_fangle = 80.01579295
+	begin.x = 1809.257324
+	begin.z = 2086.448683
+	end.x = 1851.687053
+	end.z = 2093.815900
+end segment
+
+segment 151
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 7161.28668
+	arc_iangle = 80.01579295
+	arc_fangle = 79.67108216
+	begin.x = 1851.687874
+	begin.z = 2093.811171
+	end.x = 1894.097377
+	end.z = 2101.408656
+end segment
+
+segment 152
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 5859.209018
+	arc_iangle = 79.67108216
+	arc_fangle = 79.24957052
+	begin.x = 1894.098223
+	begin.z = 2101.403932
+	end.x = 1936.475713
+	end.z = 2109.288491
+end segment
+
+segment 153
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 4958.488627
+	arc_iangle = 79.24957052
+	arc_fangle = 78.75125804
+	begin.x = 1936.476591
+	begin.z = 2109.283772
+	end.x = 1978.809126
+	end.z = 2117.512065
+end segment
+
+segment 154
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 4298.333308
+	arc_iangle = 78.75125804
+	arc_fangle = 78.17614471
+	begin.x = 1978.810041
+	begin.z = 2117.507353
+	end.x = 2021.083298
+	end.z = 2126.135838
+end segment
+
+segment 155
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3793.721434
+	arc_iangle = 78.17614471
+	arc_fangle = 77.52423052
+	begin.x = 2021.084258
+	begin.z = 2126.131135
+	end.x = 2063.282306
+	end.z = 2135.215993
+end segment
+
+segment 156
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3395.473827
+	arc_iangle = 77.52423052
+	arc_fangle = 76.79551549
+	begin.x = 2063.283316
+	begin.z = 2135.211300
+	end.x = 2105.388394
+	end.z = 2144.808354
+end segment
+
+segment 157
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3073.167005
+	arc_iangle = 76.79551549
+	arc_fangle = 75.98999961
+	begin.x = 2105.389461
+	begin.z = 2144.803674
+	end.x = 2147.381756
+	end.z = 2154.968299
+end segment
+
+segment 158
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2806.970277
+	arc_iangle = 75.98999961
+	arc_fangle = 75.10768288
+	begin.x = 2147.382885
+	begin.z = 2154.963633
+	end.x = 2189.240316
+	end.z = 2165.750642
+end segment
+
+segment 159
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2583.404682
+	arc_iangle = 75.10768288
+	arc_fangle = 74.1485653
+	begin.x = 2189.241513
+	begin.z = 2165.745994
+	end.x = 2230.939517
+	end.z = 2177.209520
+end segment
+
+segment 160
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2392.988468
+	arc_iangle = 74.1485653
+	arc_fangle = 73.11264688
+	begin.x = 2230.940789
+	begin.z = 2177.204892
+	end.x = 2272.452115
+	end.z = 2189.398248
+end segment
+
+segment 161
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2228.857637
+	arc_iangle = 73.11264688
+	arc_fangle = 71.9999276
+	begin.x = 2272.453467
+	begin.z = 2189.393642
+	end.x = 2313.747973
+	end.z = 2202.369163
+end segment
+
+segment 162
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2085.920878
+	arc_iangle = 71.9999276
+	arc_fangle = 70.81040748
+	begin.x = 2313.749412
+	begin.z = 2202.364584
+	end.x = 2354.793877
+	end.z = 2216.173452
+end segment
+
+segment 163
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1960.322004
+	arc_iangle = 70.81040748
+	arc_fangle = 69.5440865
+	begin.x = 2354.795408
+	begin.z = 2216.168902
+	end.x = 2395.553346
+	end.z = 2230.860949
+end segment
+
+segment 164
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1849.086832
+	arc_iangle = 69.5440865
+	arc_fangle = 68.20096468
+	begin.x = 2395.554973
+	begin.z = 2230.856433
+	end.x = 2435.986462
+	end.z = 2246.479925
+end segment
+
+segment 165
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1749.884646
+	arc_iangle = 68.20096468
+	arc_fangle = 66.78104201
+	begin.x = 2435.988192
+	begin.z = 2246.475448
+	end.x = 2476.049715
+	end.z = 2263.076844
+end segment
+
+segment 166
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1660.863113
+	arc_iangle = 66.78104201
+	arc_fangle = 65.28431849
+	begin.x = 2476.051553
+	begin.z = 2263.072410
+	end.x = 2515.695858
+	end.z = 2280.696104
+end segment
+
+segment 167
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1580.531538
+	arc_iangle = 65.28431849
+	arc_fangle = 63.71079412
+	begin.x = 2515.697807
+	begin.z = 2280.691718
+	end.x = 2554.873778
+	end.z = 2299.379748
+end segment
+
+segment 168
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1507.67671
+	arc_iangle = 63.71079412
+	arc_fangle = 62.0604689
+	begin.x = 2554.875845
+	begin.z = 2299.375416
+	end.x = 2593.528399
+	end.z = 2319.167161
+end segment
+
+segment 169
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1443.519171
+	arc_iangle = 62.0604689
+	arc_fangle = 60.4563345
+	begin.x = 2593.530587
+	begin.z = 2319.162888
+	end.x = 2628.965036
+	end.z = 2338.596133
+end segment
+
+segment 170
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1414.99994
+	arc_iangle = 60.4563345
+	arc_fangle = 20.19075845
+	begin.x = 2628.966893
+	begin.z = 2338.592747
+	end.x = 3259.295575
+	end.z = 3081.231897
+end segment
+
+segment 171
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1445.010183
+	arc_iangle = 20.19075845
+	arc_fangle = 18.46811197
+	begin.x = 3259.295575
+	begin.z = 3081.231897
+	end.x = 3273.675448
+	end.z = 3122.226841
+end segment
+
+segment 172
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1511.726294
+	arc_iangle = 18.46811197
+	arc_fangle = 16.82225192
+	begin.x = 3273.670923
+	begin.z = 3122.228427
+	end.x = 3286.833629
+	end.z = 3163.609286
+end segment
+
+segment 173
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1584.986665
+	arc_iangle = 16.82225192
+	arc_fangle = 15.25319272
+	begin.x = 3286.829055
+	begin.z = 3163.610741
+	end.x = 3298.820258
+	end.z = 3205.325360
+end segment
+
+segment 174
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1665.787899
+	arc_iangle = 15.25319272
+	arc_fangle = 13.76093436
+	begin.x = 3298.815645
+	begin.z = 3205.326686
+	end.x = 3309.683289
+	end.z = 3247.327389
+end segment
+
+segment 175
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1755.357468
+	arc_iangle = 13.76093436
+	arc_fangle = 12.34547686
+	begin.x = 3309.678642
+	begin.z = 3247.328591
+	end.x = 3319.472638
+	end.z = 3289.572039
+end segment
+
+segment 176
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1855.204533
+	arc_iangle = 12.34547686
+	arc_fangle = 11.0068202
+	begin.x = 3319.467962
+	begin.z = 3289.573123
+	end.x = 3328.239895
+	end.z = 3332.020163
+end segment
+
+segment 177
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1967.205664
+	arc_iangle = 11.0068202
+	arc_fangle = 9.744964391
+	begin.x = 3328.235195
+	begin.z = 3332.021134
+	end.x = 3336.038068
+	end.z = 3374.636626
+end segment
+
+segment 178
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2093.723896
+	arc_iangle = 9.744964391
+	arc_fangle = 8.559909432
+	begin.x = 3336.033346
+	begin.z = 3374.637490
+	end.x = 3342.921345
+	end.z = 3417.390124
+end segment
+
+segment 179
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2237.77729
+	arc_iangle = 8.559909432
+	arc_fangle = 7.451655322
+	begin.x = 3342.916607
+	begin.z = 3417.390887
+	end.x = 3348.944893
+	end.z = 3460.252985
+end segment
+
+segment 180
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2403.28279
+	arc_iangle = 7.451655322
+	arc_fangle = 6.420202061
+	begin.x = 3348.940140
+	begin.z = 3460.253653
+	end.x = 3354.164663
+	end.z = 3503.200966
+end segment
+
+segment 181
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2595.4178
+	arc_iangle = 6.420202061
+	arc_fangle = 5.465549648
+	begin.x = 3354.159898
+	begin.z = 3503.201546
+	end.x = 3358.637237
+	end.z = 3546.213041
+end segment
+
+segment 182
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 2821.17155
+	arc_iangle = 5.465549648
+	arc_fangle = 4.587698085
+	begin.x = 3358.632463
+	begin.z = 3546.213537
+	end.x = 3362.419680
+	end.z = 3589.271178
+end segment
+
+segment 183
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3090.213644
+	arc_iangle = 4.587698085
+	arc_fangle = 3.786647371
+	begin.x = 3362.414898
+	begin.z = 3589.271598
+	end.x = 3365.569423
+	end.z = 3632.360120
+end segment
+
+segment 184
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3416.31522
+	arc_iangle = 3.786647371
+	arc_fangle = 3.062397505
+	begin.x = 3365.564636
+	begin.z = 3632.360471
+	end.x = 3368.144160
+	end.z = 3675.467157
+end segment
+
+segment 185
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 3819.781582
+	arc_iangle = 3.062397505
+	arc_fangle = 2.414948488
+	begin.x = 3368.139369
+	begin.z = 3675.467444
+	end.x = 3370.201761
+	end.z = 3718.581894
+end segment
+
+segment 186
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 4331.849219
+	arc_iangle = 2.414948488
+	arc_fangle = 1.84430032
+	begin.x = 3370.196967
+	begin.z = 3718.582123
+	end.x = 3371.800204
+	end.z = 3761.696019
+end segment
+
+segment 187
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 5003.185631
+	arc_iangle = 1.84430032
+	arc_fangle = 1.350453001
+	begin.x = 3371.795407
+	begin.z = 3761.696197
+	end.x = 3372.997516
+	end.z = 3804.803072
+end segment
+
+segment 188
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 5921.780849
+	arc_iangle = 1.350453001
+	arc_fangle = 0.9334065312
+	begin.x = 3372.992718
+	begin.z = 3804.803205
+	end.x = 3373.851734
+	end.z = 3847.898209
+end segment
+
+segment 189
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 7255.069971
+	arc_iangle = 0.9334065312
+	arc_fangle = 0.5931609099
+	begin.x = 3373.846935
+	begin.z = 3847.898305
+	end.x = 3374.420868
+	end.z = 3890.977972
+end segment
+
+segment 190
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 9365.734443
+	arc_iangle = 0.5931609099
+	arc_fangle = 0.3297161376
+	begin.x = 3374.416068
+	begin.z = 3890.978036
+	end.x = 3374.762881
+	end.z = 3934.040049
+end segment
+
+segment 191
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 13213.40508
+	arc_iangle = 0.3297161376
+	arc_fangle = 0.1430722142
+	begin.x = 3374.758081
+	begin.z = 3934.040087
+	end.x = 3374.935671
+	end.z = 3977.083042
+end segment
+
+segment 192
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 22441.55823
+	arc_iangle = 0.1430722142
+	arc_fangle = 0.03322913959
+	begin.x = 3374.930871
+	begin.z = 3977.083062
+	end.x = 3374.997063
+	end.z = 4020.106239
+end segment
+
+segment 193
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 68976.6666
+	arc_iangle = 0.03322913959
+	arc_fangle = 0
+	begin.x = 3374.992263
+	begin.z = 4020.106246
+	end.x = 3375.003863
+	end.z = 4060.109806
+end segment
+
+segment 194
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1399.849292
+	arc_iangle = 0
+	arc_fangle = 30.40154766
+	begin.x = 3375.150708
+	begin.z = 4060.109807
+	end.x = 3567.629986
+	end.z = 4768.513427
+end segment
+
+segment 195
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1399.849292
+	arc_iangle = 30.40154766
+	arc_fangle = 0
+	begin.x = 3567.370014
+	begin.z = 4768.665961
+	end.x = 3759.849292
+	end.z = 5477.069581
+end segment
+
+segment 196
+	extended = 1
+	begin.x = 3760.000000
+	begin.z = 5477.069581
+	end.x = 3760.000000
+	end.z = 7060.109807
+end segment
+
+segment 197
+	extended = 1
+	begin.x = 3375.000000
+	begin.z = 6060.109807
+	end.x = 3375.000000
+	end.z = 7060.109807
+end segment
+
+pathway 1
+	1
+	2
+	3
+	4
+	5
+	6
+	7
+	8
+	9
+	10
+	11
+	12
+	13
+	14
+	15
+	16
+	17
+	18
+	19
+	20
+	21
+	22
+	23
+	24
+	25
+	26
+	27
+	28
+	29
+	30
+	31
+	32
+	33
+	34
+	35
+	36
+	37
+	38
+	39
+	40
+	41
+	42
+	43
+	44
+	45
+	46
+	47
+	48
+	49
+	50
+	51
+	52
+	53
+	54
+	55
+	56
+	57
+	58
+	59
+	60
+	61
+	62
+	63
+	64
+	65
+	66
+	67
+	68
+	69
+	70
+	71
+	72
+	73
+	74
+	75
+	76
+	77
+	78
+	79
+	80
+	81
+	82
+	83
+	84
+	85
+	86
+	87
+	88
+	89
+	90
+	91
+	92
+	93
+	94
+	95
+	96
+end pathway
+
+pathway 2
+	97
+	98
+	99
+	100
+	101
+	102
+	103
+	104
+	105
+	106
+	107
+	108
+	109
+	110
+	111
+	112
+	113
+	114
+	115
+	116
+	117
+	118
+	119
+	120
+	121
+	122
+	123
+	124
+	125
+	126
+	127
+	128
+	129
+	130
+	131
+	132
+	133
+	134
+	135
+	136
+	137
+	138
+	139
+	140
+	141
+	142
+	143
+	144
+	145
+end pathway
+
+pathway 3
+	146
+end pathway
+
+pathway 4
+	147
+	148
+	149
+	150
+	151
+	152
+	153
+	154
+	155
+	156
+	157
+	158
+	159
+	160
+	161
+	162
+	163
+	164
+	165
+	166
+	167
+	168
+	169
+	170
+	171
+	172
+	173
+	174
+	175
+	176
+	177
+	178
+	179
+	180
+	181
+	182
+	183
+	184
+	185
+	186
+	187
+	188
+	189
+	190
+	191
+	192
+	193
+	194
+	195
+	196
+end pathway
+
+pathway 5
+	197
+end pathway
+
+
+monitor 1
+	pathway = 1
+	monitor_type = MONITOR_FILE_POWER
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_1
+end monitor
+
+monitor 2
+	pathway = 1
+	monitor_type = MONITOR_FILE_PHASE
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_1
+end monitor
+
+monitor 3
+	pathway = 2
+	monitor_type = MONITOR_FILE_POWER
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_2
+end monitor
+
+monitor 4
+	pathway = 2
+	monitor_type = MONITOR_FILE_PHASE
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_2
+end monitor
+
+monitor 5
+	pathway = 3
+	monitor_type = MONITOR_FILE_POWER
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_3
+end monitor
+
+monitor 6
+	pathway = 3
+	monitor_type = MONITOR_FILE_PHASE
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_3
+end monitor
+
+monitor 7
+	pathway = 4
+	monitor_type = MONITOR_FILE_POWER
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_4
+end monitor
+
+monitor 8
+	pathway = 4
+	monitor_type = MONITOR_FILE_PHASE
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_4
+end monitor
+
+monitor 9
+	pathway = 5
+	monitor_type = MONITOR_FILE_POWER
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_5
+end monitor
+
+monitor 10
+	pathway = 5
+	monitor_type = MONITOR_FILE_PHASE
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_5
+end monitor
+
+
+launch_field 1
+	launch_pathway = 1
+	launch_type = LAUNCH_FILE
+	launch_tilt = 1
+	launch_normalization = 2
+	launch_align_file = 1
+	launch_position = 0.000000
+	launch_position_y = 0
+	launch_file = $Launch_filename_1
+end launch_field
+
