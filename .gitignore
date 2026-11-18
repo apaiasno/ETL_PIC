@@ -11,6 +11,8 @@ simulation/**
 !simulation/**/*.ipynb
 !simulation/NullingPIC_Gen2_sims/P-*/*.ind
 !simulation/NullingPIC_Gen2_sims/P-*/*.gds
+!simulation/NullingPIC_Gen2_sims/A1-*/*.ind
+!simulation/NullingPIC_Gen2_sims/A1-*/*.gds
 simulation/**/obsolete/
 
 # Exclusions (must stay below the whitelist rules)
