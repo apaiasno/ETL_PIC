@@ -2417,7 +2417,7 @@ segment 176
 	arc_type = ARC_FREE
 	arc_radius = 384883.3333
 	arc_iangle = 0.001190804235
-	arc_fangle = 0
+	arc_fangle = 1.272221873e-14
 	begin.x = 5999.999944
 	begin.z = 4057.500989
 	end.x = 6000.000027

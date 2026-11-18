@@ -41,7 +41,7 @@ from .simulation import run_sim, run_scan, scan_wavelengths, read_pathways, read
 from . import transfer
 from . import device_setup
 from .geometry import (sbend_lengths, euler_sbend, euler_sidestep, euler_ramp_length, euler_sbend_from_ramp, euler_sbend_fixed_ramp,
-                       bend_curvature, parallel_path, path_list, eval_width, sidestep_offset, sidestep_straight, sidestep_angle,
+                       bend_curvature, parallel_path, path_list, eval_width, sidestep_offset, sidestep_straight, sidestep_angle, circular_sidestep,
                        delay_arm_parameters, delay_arm, euler_wave, raised_cosine, cosine_tapers)
 from .circuit import Circuit, mzi, radiation_witness, read_apd_tables, apd_pieces, paths_to_circuit, arc_end_point, fit_path, pathway_file_symbols, ind2gds
 from .gds import save_gds, read_gds_shapes, gds_waveguides, gds_to_ind
@@ -59,7 +59,7 @@ __all__ = [
     "n_clad", "material_nk", "read_nk", "find_material_file",
     "run_sim", "run_scan", "scan_wavelengths", "read_pathways", "read_scan", "estimate_pathways", "PathwayEstimate", "PathwayEstimates", "transfer", "device_setup",
     "sbend_lengths", "euler_sbend", "euler_sidestep", "euler_ramp_length", "euler_sbend_from_ramp", "euler_sbend_fixed_ramp", "bend_curvature",
-    "parallel_path", "path_list", "eval_width", "sidestep_offset", "sidestep_straight", "sidestep_angle", "delay_arm_parameters",
+    "parallel_path", "path_list", "eval_width", "sidestep_offset", "sidestep_straight", "sidestep_angle", "circular_sidestep", "delay_arm_parameters",
     "delay_arm", "euler_wave", "raised_cosine", "cosine_tapers",
     "Circuit", "mzi", "radiation_witness", "read_apd_tables", "apd_pieces", "paths_to_circuit", "arc_end_point", "fit_path", "pathway_file_symbols", "ind2gds",
     "save_gds", "read_gds_shapes", "gds_waveguides", "gds_to_ind",
