@@ -1,0 +1,336 @@
+
+Circuit_xmax = 427.022090
+Circuit_xmin = -18.700000
+Contrast = 1.02
+Grid_Edge = 0.5
+Grid_Size = 0.1
+Launch_filename_1 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+Launch_filename_2 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+Monitor_filename_1 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+Monitor_filename_2 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+PML_width = 5.0
+Padding = 20.0
+Step_z = 0.1
+alpha = 0
+background_alpha = nimag($background_material)
+background_index = nreal($background_material)
+background_material = SiO2
+bc_type = BC_PML
+boundary_max = Circuit_xmax+Padding
+boundary_max_y = (height/2+Padding)
+boundary_min = Circuit_xmin-Padding
+boundary_min_y = -(height/2+Padding)
+cad_aspectratio_y = 1
+default_material = DopedSiO2
+delta = 0.1
+dimension = 3
+eim = 0
+free_space_wavelength = 1.55
+grid_edge_factor_x = Grid_Edge
+grid_edge_factor_y = Grid_Edge
+grid_nonuniform = 1
+grid_size = Grid_Size
+grid_size_y = Grid_Size
+height = 3.4
+k0 = (2*pi)/free_space_wavelength
+launch_align_file = 1
+launch_file = $Launch_filename_1
+launch_file_explicit = 1
+launch_normalization = 2
+launch_position = 0
+launch_position_y = 0
+launch_tilt = 1
+launch_type = LAUNCH_FILE
+monitor_file_explicit = 1
+pade_order = 2
+pade_order_warning_3d = 0
+pml_width_x = PML_width
+pml_width_y = PML_width
+sim_tool = ST_BEAMPROP
+slice_display_mode = DISPLAY_CONTOURMAPXZ
+slice_output_format = OUTPUT_AMP_PHASE
+step_size = Step_z
+structure = STRUCT_CHANNEL
+vector = 1
+width = 3.4
+
+
+material 1
+	name = DopedSiO2
+	origin = Path=/RSoft/Dielectrics/SiO2 Date=03/25/2022 Time=10:00
+	comment = Lambda_Min=0.2, Lambda_Max=3.37, Src=J.Opt.Soc.Am/Vol-55/pp-1205
+	optical
+		ni = Contrast*userimag("<rsoftmat>\\SiO2_nk.dat",free_space_wavelength)
+		nr = Contrast*userreal("<rsoftmat>\\SiO2_nk.dat",free_space_wavelength)
+	end optical
+	epsinf = 1
+	num_dsp = 3
+	delta_1 = 5873.621094
+	a_1 = 1
+	b_1 = 0
+	c_1 = 8437.094835
+	delta_2 = 1191.892625
+	a_2 = 1
+	b_2 = 0
+	c_2 = 2921.716498
+	delta_3 = 0.3622641
+	a_3 = 1
+	b_3 = 0
+	c_3 = 0.4036462
+	electro_optic
+		eps_xx = 3.8
+		eps_yy = 3.8
+		eps_zz = 3.8
+	end electro_optic
+	thermo_optic
+		kappa_xx = 1.38*1e-6
+		kappa_yy = 1.38*1e-6
+		kappa_zz = 1.38*1e-6
+		r = 1e-05
+	end thermo_optic
+	stress_optic
+		E = 76.7
+		alpha = 5.4e-07
+		nu = 0.186
+		p1 = 0.16
+		p2 = 0.27
+	end stress_optic
+	semiconductor
+		elem_matfile = Oxide.mat
+		reg_regtype = oxide
+	end semiconductor
+end material
+
+material 2
+	name = SiO2
+	origin = Path=/RSoft/Dielectrics/SiO2 Date=03/25/2022 Time=10:00
+	comment = Lambda_Min=0.2, Lambda_Max=3.37, Src=J.Opt.Soc.Am/Vol-55/pp-1205
+	optical
+		ni = userimag("<rsoftmat>\\SiO2_nk.dat",free_space_wavelength)
+		nr = userreal("<rsoftmat>\\SiO2_nk.dat",free_space_wavelength)
+	end optical
+	epsinf = 1
+	num_dsp = 3
+	delta_1 = 5873.621094
+	a_1 = 1
+	b_1 = 0
+	c_1 = 8437.094835
+	delta_2 = 1191.892625
+	a_2 = 1
+	b_2 = 0
+	c_2 = 2921.716498
+	delta_3 = 0.3622641
+	a_3 = 1
+	b_3 = 0
+	c_3 = 0.4036462
+	electro_optic
+		eps_xx = 3.8
+		eps_yy = 3.8
+		eps_zz = 3.8
+	end electro_optic
+	thermo_optic
+		kappa_xx = 1.38*1e-6
+		kappa_yy = 1.38*1e-6
+		kappa_zz = 1.38*1e-6
+		r = 1e-05
+	end thermo_optic
+	stress_optic
+		E = 76.7
+		alpha = 5.4e-07
+		nu = 0.186
+		p1 = 0.16
+		p2 = 0.27
+	end stress_optic
+	semiconductor
+		elem_matfile = Oxide.mat
+		reg_regtype = oxide
+	end semiconductor
+end material
+
+
+user_taper 1
+	type = UF_EXPRESSION
+	expression = 0.5 - 0.5*cos(180*z)
+	xpoints = 250/Step_z
+end user_taper
+
+segment 1
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1400
+	arc_iangle = 0
+	arc_fangle = 31.99446834
+	begin.x = 0.000000
+	begin.z = 0.000000
+	end.x = 212.661045
+	end.z = 741.772341
+end segment
+
+segment 2
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1400
+	arc_iangle = 31.99446834
+	arc_fangle = 0
+	begin.x = 212.661045
+	begin.z = 741.772341
+	end.x = 425.322090
+	end.z = 1483.544682
+end segment
+
+segment 3
+	extended = 1
+	begin.x = 425.322090
+	begin.z = 1483.544682
+	end.x = 425.322090
+	end.z = 1516.455318
+end segment
+
+segment 4
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1400
+	arc_iangle = 0
+	arc_fangle = -31.99446834
+	begin.x = 425.322090
+	begin.z = 1516.455318
+	end.x = 212.661045
+	end.z = 2258.227659
+end segment
+
+segment 5
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1400
+	arc_iangle = -31.99446834
+	arc_fangle = 0
+	begin.x = 212.661045
+	begin.z = 2258.227659
+	end.x = 0.000000
+	end.z = 3000.000000
+end segment
+
+segment 6
+	extended = 1
+	begin.x = -17.000000
+	begin.z = 0.000000
+	end.x = -17.000000
+	end.z = 662.000000
+end segment
+
+segment 7
+	extended = 1
+	begin.x = -17.000000
+	begin.z = 662.000000
+	end.x = -17.000000
+	end.z = 912.000000
+	width_taper = TAPER_USER_1
+	begin.width = 3.400000
+	end.width = 3.200000
+end segment
+
+segment 8
+	extended = 1
+	begin.x = -17.000000
+	begin.z = 912.000000
+	end.x = -17.000000
+	end.z = 2088.000000
+	begin.width = 3.200000
+	end.width = 3.200000
+end segment
+
+segment 9
+	extended = 1
+	begin.x = -17.000000
+	begin.z = 2088.000000
+	end.x = -17.000000
+	end.z = 2338.000000
+	width_taper = TAPER_USER_1
+	begin.width = 3.200000
+	end.width = 3.400000
+end segment
+
+segment 10
+	extended = 1
+	begin.x = -17.000000
+	begin.z = 2338.000000
+	end.x = -17.000000
+	end.z = 3000.000000
+end segment
+
+pathway 1
+	1
+	2
+	3
+	4
+	5
+end pathway
+
+pathway 2
+	6
+	7
+	8
+	9
+	10
+end pathway
+
+
+monitor 1
+	pathway = 1
+	monitor_type = MONITOR_FILE_POWER
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_1
+end monitor
+
+monitor 2
+	pathway = 1
+	monitor_type = MONITOR_FILE_PHASE
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_1
+end monitor
+
+monitor 3
+	pathway = 2
+	monitor_type = MONITOR_FILE_POWER
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_2
+end monitor
+
+monitor 4
+	pathway = 2
+	monitor_type = MONITOR_FILE_PHASE
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_2
+end monitor
+
+
+launch_field 1
+	launch_pathway = 1
+	launch_type = LAUNCH_FILE
+	launch_tilt = 1
+	launch_normalization = 2
+	launch_align_file = 1
+	launch_position = 0.000000
+	launch_position_y = 0
+	launch_file = $Launch_filename_1
+end launch_field
+
+launch_field 2
+	launch_pathway = 2
+	launch_type = LAUNCH_FILE
+	launch_tilt = 1
+	launch_normalization = 2
+	launch_align_file = 1
+	launch_position = -17.000000
+	launch_position_y = 0
+	launch_file = $Launch_filename_2
+end launch_field
+

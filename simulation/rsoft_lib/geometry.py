@@ -205,6 +205,48 @@ def euler_sbend(d, R_min, p=1.0, ds=1.0):
     return np.sign(d) * x, z, np.sign(d) * phi
 
 
+def euler_sidestep(R_min, angle_deg, p=0.5, offset=None, straight=None, ds=1.0, x0=0.0, direction=1, return_params=False):
+    """Euler side-step: an Euler bend that turns the guide by angle_deg, a straight at that angle, and the mirror-image Euler bend
+    back to z. The two bends are the halves of the partial-Euler S-bend of minimum radius R_min and Euler fraction p (each ramps
+    the curvature from 0 to 1/R_min over a clothoid, holds it, and ramps it back to 0), so they are the same for every offset,
+    and the curvature is continuous everywhere, including at both ends of the straight.
+
+    Give either offset (the lateral displacement, um; the straight gets the length that reaches it) or straight (its length, um).
+    The offset is 2 * (lateral displacement of one bend) + straight * sin(angle); an offset smaller than the bends alone reach
+    raises ValueError. direction=1 steps toward +x, -1 toward -x.
+    Returns x, z, phi (z = propagation direction, phi = tangent angle from z), sampled every ds um; with return_params=True also a
+    dict: straight, offset, bend_offset and bend_z (the displacement of one bend), z_length, path_length, angle_deg,
+    bend1_end and bend2_start (indices: the first bend is [:bend1_end + 1], the second [bend2_start:])."""
+    if (offset is None) == (straight is None):
+        raise ValueError("Give exactly one of offset and straight")
+    theta = np.radians(angle_deg)
+    n = max(int(np.ceil(2 * (1 + p) * theta * R_min / ds)), 2)
+    n += n % 2                                                     # the inflection on a sample
+    xs, zs, ps = _euler_path(R_min, p * theta * R_min, (1 - p) * theta * R_min, n)
+    k = n // 2
+    hx, hz, hp = xs[:k + 1], zs[:k + 1], ps[:k + 1]                 # one Euler bend, heading 0 -> angle
+    if straight is None:
+        straight = (abs(offset) - 2 * hx[-1]) / np.sin(theta)
+        if straight < -1e-9:
+            raise ValueError(f"An offset of {abs(offset):g} um is below what the two Euler bends alone reach ({2 * hx[-1]:.3f} um at "
+                             f"{angle_deg:g} deg, R_min {R_min:g} um, p {p:g}); use a smaller angle")
+        straight = max(straight, 0.0)
+    m = int(np.ceil(straight / ds)) if straight > 0 else 0
+    t = np.linspace(0, straight, m + 1)[1:]
+    sx, sz = hx[-1] + t * np.sin(theta), hz[-1] + t * np.cos(theta)
+    X, Z = 2 * hx[-1] + straight * np.sin(theta), 2 * hz[-1] + straight * np.cos(theta)
+    x = np.concatenate([hx, sx, (X - hx[::-1])[1:]])
+    z = np.concatenate([hz, sz, (Z - hz[::-1])[1:]])
+    phi = np.concatenate([hp, np.full(m, theta), hp[::-1][1:]])
+    s = 1.0 if direction >= 0 else -1.0
+    x, phi = x0 + s * x, s * phi
+    if not return_params:
+        return x, z, phi
+    seg = np.hypot(np.diff(x), np.diff(z)).sum()
+    return x, z, phi, dict(straight=float(straight), offset=float(X), bend_offset=float(hx[-1]), bend_z=float(hz[-1]),
+                           z_length=float(Z), path_length=float(seg), angle_deg=float(angle_deg), bend1_end=int(k), bend2_start=int(k + m))
+
+
 def euler_ramp_length(d_ref, R_min, p=1.0):
     """Length (um) of each curvature ramp (clothoid) of the reference Euler S-bend (d_ref, R_min, p)."""
     return p * _euler_theta(d_ref, R_min, p) * R_min

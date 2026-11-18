@@ -1,5 +1,5 @@
 
-Circuit_xmax = 3761.700000
+Circuit_xmax = 4401.700000
 Circuit_xmin = -51.554629
 Contrast = 1.02
 Grid_Edge = 0.5
@@ -179,7 +179,7 @@ segment 3
 	extended = 1
 	begin.x = 1400.000000
 	begin.z = 1500.000000
-	end.x = 1960.000000
+	end.x = 2600.000000
 	end.z = 1500.000000
 end segment
 
@@ -190,17 +190,17 @@ segment 4
 	arc_radius = 1399.849292
 	arc_iangle = 90
 	arc_fangle = 0
-	begin.x = 1960.000000
+	begin.x = 2600.000000
 	begin.z = 1500.150708
-	end.x = 3359.849292
+	end.x = 3999.849292
 	end.z = 2900.000000
 end segment
 
 segment 5
 	extended = 1
-	begin.x = 3360.000000
+	begin.x = 4000.000000
 	begin.z = 2900.000000
-	end.x = 3360.000000
+	end.x = 4000.000000
 	end.z = 5900.000000
 end segment
 
@@ -221,28 +221,28 @@ segment 7
 	extended = 1
 	position_taper = TAPER_ARC
 	arc_type = ARC_FREE
-	arc_radius = 1559.865132
+	arc_radius = 2199.904928
 	arc_iangle = 90
 	arc_fangle = 0
 	begin.x = 1400.000000
-	begin.z = 1550.134868
-	end.x = 2959.865132
-	end.z = 3110.000000
+	begin.z = 1550.095072
+	end.x = 3599.904928
+	end.z = 3750.000000
 end segment
 
 segment 8
 	extended = 1
-	begin.x = 2960.000000
-	begin.z = 3110.000000
-	end.x = 2960.000000
+	begin.x = 3600.000000
+	begin.z = 3750.000000
+	end.x = 3600.000000
 	end.z = 5900.000000
 end segment
 
 segment 9
 	extended = 1
-	begin.x = 3310.000000
+	begin.x = 3950.000000
 	begin.z = 4900.000000
-	end.x = 3310.000000
+	end.x = 3950.000000
 	end.z = 5900.000000
 end segment
 
@@ -253,9 +253,9 @@ segment 10
 	arc_radius = 1414.850934
 	arc_iangle = 90
 	arc_fangle = 0
-	begin.x = 1960.000000
+	begin.x = 2600.000000
 	begin.z = 1485.149066
-	end.x = 3374.850934
+	end.x = 4014.850934
 	end.z = 2900.000000
 end segment
 
@@ -266,9 +266,9 @@ segment 11
 	arc_radius = 1399.849292
 	arc_iangle = 0
 	arc_fangle = 30.40154766
-	begin.x = 3375.150708
+	begin.x = 4015.150708
 	begin.z = 2900.000000
-	end.x = 3567.629986
+	end.x = 4207.629986
 	end.z = 3608.403620
 end segment
 
@@ -279,25 +279,25 @@ segment 12
 	arc_radius = 1399.849292
 	arc_iangle = 30.40154766
 	arc_fangle = 0
-	begin.x = 3567.370014
+	begin.x = 4207.370014
 	begin.z = 3608.556154
-	end.x = 3759.849292
+	end.x = 4399.849292
 	end.z = 4316.959774
 end segment
 
 segment 13
 	extended = 1
-	begin.x = 3760.000000
+	begin.x = 4400.000000
 	begin.z = 4316.959774
-	end.x = 3760.000000
+	end.x = 4400.000000
 	end.z = 5900.000000
 end segment
 
 segment 14
 	extended = 1
-	begin.x = 3375.000000
+	begin.x = 4015.000000
 	begin.z = 4900.000000
-	end.x = 3375.000000
+	end.x = 4015.000000
 	end.z = 5900.000000
 end segment
 

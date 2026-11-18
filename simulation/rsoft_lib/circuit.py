@@ -9,7 +9,7 @@ Contents (in this order)
     File text           _material_block, _segment_text, _ind_text, _write_ind
     Arcs                arc_end_point, fit_path (x, z, phi -> lines and free arcs)
     Circuit             segments, pathways and the file: line, arc, free_arc, add_path, add_pathway, path_length, extent, write, export, plot;
-                        builders add_mmi, add_delay_arm, add_sbend, add_sidestep, add_route, add_tapered_arm
+                        builders add_mmi, add_delay_arm, add_sbend, add_sidestep, add_route, add_apd, add_tapered_arm
     Any path            paths_to_circuit (x, z, phi, width -> a circuit with one pathway per path)
     mzi                 an unbalanced Mach-Zehnder: two 2x2 MMIs joined by a bump delay arm and a tapered arm
     Run helpers         pathway_file_symbols (the symbols to set per run), ind2gds (RSoft's GDS export)
@@ -303,16 +303,89 @@ def fit_path(x, z, phi=None, tol=5e-3, min_run=5):
 # --------------------------------------------------------------------------- #
 
 
-class Pathway(dict):
-    """A pathway of a Circuit: a dict with segments (the segment numbers in route order), launch (True if it has a launch field),
-    start and end ((x, z) where the guide begins and ends, as drawn, including bend offsets). The keys can also be read as
-    attributes: p.start is p["start"]."""
+_APD_PROFILES = {"raised_cosine": "cosine", "cosine": "cosine", "linear": None}
+
+
+def read_apd_tables(sections_csv, tapers_csv):
+    """Read an achromatic-phase-delay design from its two tables (CSV files, as from the APD designs):
+
+        sections: section, length_um, top_width_um, bottom_width_um
+        tapers:   boundary, taper_length_um, profile, top_from_um, top_to_um, bot_from_um, bot_to_um
+
+    Taper i joins section i - 1 and section i; taper 0 starts from the access guide and the last one returns to it, so there is
+    one more taper than sections. profile is raised_cosine (w0 + (w1 - w0) * (0.5 - 0.5 cos(pi s)), the profile of the APD phase
+    model and of Circuit.line(profile="cosine")) or linear. The tapers' from/to widths must agree with the sections and with one
+    access-guide width at both ends; any disagreement raises ValueError. Returns a dict: sections [(length, top, bottom)],
+    tapers [(length, profile)], guide_width, length (the APD length, sections + tapers)."""
+    import csv
+
+    def rows(path):
+        with open(path, newline="") as f:
+            return [{k.strip(): v.strip() for k, v in r.items()} for r in csv.DictReader(f)]
+
+    secs = sorted(rows(sections_csv), key=lambda r: int(r["section"]))
+    taps = sorted(rows(tapers_csv), key=lambda r: int(r["boundary"]))
+    sections = [(float(r["length_um"]), float(r["top_width_um"]), float(r["bottom_width_um"])) for r in secs]
+    if len(taps) != len(sections) + 1:
+        raise ValueError(f"{len(sections)} sections need {len(sections) + 1} tapers, the table has {len(taps)}")
+    guide = float(taps[0]["top_from_um"])
+    top = [guide] + [s[1] for s in sections] + [guide]
+    bot = [guide] + [s[2] for s in sections] + [guide]
+    problems, tapers = [], []
+    for i, r in enumerate(taps):
+        profile = r["profile"].lower()
+        if profile not in _APD_PROFILES:
+            raise ValueError(f"Taper {i}: unknown profile {r['profile']!r} (raised_cosine or linear)")
+        want = (top[i], top[i + 1], bot[i], bot[i + 1])
+        got = tuple(float(r[k]) for k in ("top_from_um", "top_to_um", "bot_from_um", "bot_to_um"))
+        if any(abs(a - b) > 1e-6 for a, b in zip(want, got)):
+            problems.append(f"taper {i}: table {got}, sections give {want}")
+        tapers.append((float(r["taper_length_um"]), _APD_PROFILES[profile]))
+    if problems:
+        raise ValueError("The taper table disagrees with the sections: " + "; ".join(problems))
+    return dict(sections=sections, tapers=tapers, guide_width=guide,
+                length=float(sum(s[0] for s in sections) + sum(t[0] for t in tapers)))
+
+
+def apd_pieces(apd, arm, path_offset=0.0):
+    """One arm of an achromatic phase delay (apd: the dict of read_apd_tables) as pieces for Circuit.add_route, starting at the
+    access-guide width: taper, section, taper, ..., taper back to the access guide. arm: "top" or "bottom".
+    path_offset (um): extra access-width guide at the end of this arm (give it to the arm that gets the extra path).
+    Use as c.add_route(x, z, heading, apd_pieces(apd, "top"), width=apd["guide_width"])."""
+    if arm not in ("top", "bottom"):
+        raise ValueError('arm is "top" or "bottom"')
+    col = 1 if arm == "top" else 2
+    widths = [apd["guide_width"]] + [s[col] for s in apd["sections"]] + [apd["guide_width"]]
+    pieces = []
+    for i, (taper_length, profile) in enumerate(apd["tapers"]):
+        if taper_length > 0:
+            pieces.append(("taper", taper_length, widths[i + 1], profile))
+        if i < len(apd["sections"]):
+            pieces.append(("line", apd["sections"][i][0], widths[i + 1]))
+    if path_offset > 0:
+        pieces.append(("line", path_offset, apd["guide_width"]))
+    return pieces
+
+
+class _Record(dict):
+    """A dict whose keys can also be read as attributes: r.start is r["start"]."""
 
     def __getattr__(self, name):
         try:
             return self[name]
         except KeyError:
             raise AttributeError(name) from None
+
+
+class Segment(_Record):
+    """A segment of a Circuit: number (its RSoft segment number, from 1), kind ("line" or "arc"), A and B (begin and end (x, z) as
+    written; an arc tangent to z at its far end is written backward), wa and wb (width at A and B), extended, taper (user-taper
+    number or None), and for a free arc free = (radius, initial heading, final heading)."""
+
+
+class Pathway(_Record):
+    """A pathway of a Circuit: number (its RSoft pathway number, from 1), segments (the segment numbers in route order), launch
+    (True if it has a launch field), start and end ((x, z) where the guide begins and ends, as drawn, including bend offsets)."""
 
 
 class Circuit:
@@ -329,12 +402,27 @@ class Circuit:
 
     def __init__(self, width=3.4, height=3.4, orientation="z"):
         self.width, self.height = width, height              # default waveguide width and height (um)
-        if orientation not in ("extended", "z"):
-            raise ValueError("orientation is 'extended' or 'z'")
-        self.orientation = orientation
-        self.segments = []                                  # dicts, number = index + 1
-        self.pathways = []                                  # dicts: segments, launch
+        self.segments = []                                  # Segment records, number = index + 1
+        self.pathways = []                                  # Pathway records, number = index + 1
         self._tapers = []                                   # (expression, length) of the user tapers, number = index + 1
+        self._orientation = "z"
+        self.orientation = orientation
+
+    @property
+    def orientation(self):
+        """"extended" (every segment is written as RSoft's Extended type) or "z" (only segments created with extended=True are).
+        Each segment's `extended` value is what is written: in an "extended" circuit every segment has extended=True, and setting
+        orientation to "extended" later marks all existing segments extended. Setting it back to "z" keeps the segments as they are."""
+        return self._orientation
+
+    @orientation.setter
+    def orientation(self, value):
+        if value not in ("extended", "z"):
+            raise ValueError("orientation is 'extended' or 'z'")
+        self._orientation = value
+        if value == "extended":
+            for s in self.segments:
+                s["extended"] = True
 
     # ---- segments
     def line(self, begin, end, width=None, profile=None, extended=False):
@@ -349,16 +437,16 @@ class Circuit:
             if (expression, length) not in self._tapers:
                 self._tapers.append((expression, length))
             taper = self._tapers.index((expression, length)) + 1
-        self.segments.append(dict(kind="line", A=tuple(map(float, begin)), B=tuple(map(float, end)), wa=float(wa), wb=float(wb),
-                                  extended=extended, taper=taper))
+        self.segments.append(Segment(number=len(self.segments) + 1, kind="line", A=tuple(map(float, begin)), B=tuple(map(float, end)),
+                                     wa=float(wa), wb=float(wb), extended=bool(extended) or self._orientation == "extended", taper=taper))
         return len(self.segments)
 
     def arc(self, begin, end, width=None, extended=False):
         """A circular arc from begin to end that is tangent to the z direction at begin (RSoft's arc_iangle = 0). An arc that
         is tangent to z at its far end is given backward: begin at that end, as in your other circuits. Returns the number."""
         w = self.width if width is None else width
-        self.segments.append(dict(kind="arc", A=tuple(map(float, begin)), B=tuple(map(float, end)), wa=float(w), wb=float(w),
-                                  extended=extended, taper=None))
+        self.segments.append(Segment(number=len(self.segments) + 1, kind="arc", A=tuple(map(float, begin)), B=tuple(map(float, end)),
+                                     wa=float(w), wb=float(w), extended=bool(extended) or self._orientation == "extended", taper=None))
         return len(self.segments)
 
     def free_arc(self, begin, radius, iangle, fangle, width=None, extended=False):
@@ -367,8 +455,9 @@ class Circuit:
         Returns (segment number, end point): start the next arc there to keep the path smooth."""
         end = arc_end_point(begin, radius, iangle, fangle)
         wa, wb = (self.width, self.width) if width is None else (width, width) if np.ndim(width) == 0 else tuple(width)
-        self.segments.append(dict(kind="arc", A=tuple(map(float, begin)), B=tuple(map(float, end)), wa=float(wa), wb=float(wb),
-                                  extended=extended, taper=None, free=(float(radius), float(iangle), float(fangle))))
+        self.segments.append(Segment(number=len(self.segments) + 1, kind="arc", A=tuple(map(float, begin)), B=tuple(map(float, end)),
+                                     wa=float(wa), wb=float(wb), extended=bool(extended) or self._orientation == "extended", taper=None,
+                                     free=(float(radius), float(iangle), float(fangle))))
         return len(self.segments), end
 
     def add_path(self, x, z, phi=None, width=None, tol=5e-3, width_tol=5e-3, extended_ends=False):
@@ -426,9 +515,25 @@ class Circuit:
         seg = [self.segments[n - 1] for n in numbers]
         start = min((seg[0]["A"], seg[0]["B"]), key=lambda p: p[1])           # pathways run toward +z: the lower-z end of the first
         end = max((seg[-1]["A"], seg[-1]["B"]), key=lambda p: p[1])            # segment, the higher-z end of the last (arcs can be backward)
-        self.pathways.append(Pathway(segments=list(numbers), launch=bool(launch), start=tuple(map(float, start)),
-                                     end=tuple(map(float, end))))
+        self.pathways.append(Pathway(number=len(self.pathways) + 1, segments=list(numbers), launch=bool(launch),
+                                     start=tuple(map(float, start)), end=tuple(map(float, end))))
         return len(self.pathways)
+
+    def segment(self, number):
+        """The segment with this RSoft segment number (from 1), as used in pathways and in the .ind: c.segment(n) is c.segments[n - 1]."""
+        if not 1 <= number <= len(self.segments):
+            raise IndexError(f"No segment {number}: the circuit has segments 1-{len(self.segments)}")
+        return self.segments[number - 1]
+
+    def pathway(self, number):
+        """The pathway with this RSoft pathway number (from 1): c.pathway(k) is c.pathways[k - 1]."""
+        if not 1 <= number <= len(self.pathways):
+            raise IndexError(f"No pathway {number}: the circuit has pathways 1-{len(self.pathways)}")
+        return self.pathways[number - 1]
+
+    def pathway_segments(self, number):
+        """The segments of pathway `number` (from 1), in route order."""
+        return [self.segment(n) for n in self.pathway(number).segments]
 
     def path_length(self, numbers):
         """The length (um) along the segments `numbers`: straight lengths plus arc lengths (radius x angle swept)."""
@@ -468,7 +573,7 @@ class Circuit:
         monitor_files = list(monitor_files) if monitor_files else [default_file] * n
         if len(launch_files) != n or len(monitor_files) != n:
             raise ValueError(f"{n} pathways, so launch_files and monitor_files need {n} entries each")
-        texts = [_segment_text(k, s["kind"], s["A"], s["B"], s["wa"], s["wb"], self.width, s["extended"] or self.orientation == "extended", s["taper"], s.get("free"))
+        texts = [_segment_text(k, s["kind"], s["A"], s["B"], s["wa"], s["wb"], self.width, s["extended"], s["taper"], s.get("free"))
                  for k, s in enumerate(self.segments, start=1)]
         blocks = [f"user_taper {k}\n\ttype = UF_EXPRESSION\n\texpression = {expression}\n\txpoints = {length:.6g}/Step_z\nend user_taper"
                   for k, (expression, length) in enumerate(self._tapers, start=1)]
@@ -667,27 +772,44 @@ class Circuit:
     def add_route(self, x, z, heading, pieces, offset_wavelength=None, width=None):
         """A guide built piece by piece from the point (x, z) and the heading (degrees from +z toward +x).
 
-        pieces: a list of ("line", length) and ("arc", radius, turn), turn in degrees, positive toward +x (the heading increases),
-        negative toward -x. The pieces join smoothly along a continuous nominal path. Straights lie on that path; arcs are free arcs.
-        Every piece is written as an extended segment, so its width is measured across the guide at any heading (a z-axis segment
-        keeps its width along x, which narrows a tilted straight to width * cos(angle) and distorts arcs at steep headings).
+        pieces, in order along the guide:
+          ("line", length)                     a straight at the current width
+          ("line", length, w)                  a straight of width w (w becomes the current width)
+          ("taper", length, w)                 a straight whose width changes from the current width to w along a raised cosine
+          ("taper", length, w, profile)        ... with profile "cosine", None (linear), or an expression in z' (0 to 1)
+          ("arc", radius, turn)                an arc at the current width; turn in degrees, positive toward +x (the heading
+                                               increases), negative toward -x
+        width: the width at the start (default the circuit's width). The pieces join smoothly along a continuous nominal path.
+        Straights and tapers lie on that path; arcs are free arcs. Every piece is written as an extended segment, so its width is
+        measured across the guide at any heading (a z-axis segment keeps its width along x, which narrows a tilted straight to
+        width * cos(angle) and distorts arcs at steep headings).
         offset_wavelength: if given, every arc is drawn on the circle concentric with its nominal arc and closer to the center by
         abs(straight_offset(radius, offset_wavelength)) (bend_modes, interpolated between scanned radii). The guide then steps by
         exactly that offset perpendicular to itself where an arc meets a straight, and by the sum (opposite turns) or the difference
         (same turn) of the two offsets where two arcs meet, at any heading.
-        Returns a dict: segments (route order), x_end, z_end and heading_end (the nominal end), path_length and arc_length (nominal)."""
+        Returns a dict: segments (route order), x_end, z_end and heading_end (the nominal end), width_end, path_length and arc_length
+        (nominal)."""
         offsets = {}
         if offset_wavelength is not None:
             from .bend_modes import straight_offset
         px, pz, phi = float(x), float(z), float(heading)
+        w = float(self.width if width is None else width)
         numbers, path_length, arc_length = [], 0.0, 0.0
         for piece in pieces:
             kind = piece[0]
             t = np.radians(phi)
-            if kind == "line":
+            if kind in ("line", "taper"):
                 L = float(piece[1])
                 end = (px + L * np.sin(t), pz + L * np.cos(t))
-                numbers.append(self.line((px, pz), end, width=width, extended=True))      # width across the segment, at any tilt
+                if kind == "line":
+                    if len(piece) > 2:
+                        w = float(piece[2])
+                    numbers.append(self.line((px, pz), end, width=w, extended=True))      # width across the segment, at any tilt
+                else:
+                    w1 = float(piece[2])
+                    profile = piece[3] if len(piece) > 3 else "cosine"
+                    numbers.append(self.line((px, pz), end, width=(w, w1), profile=profile, extended=True))
+                    w = w1
                 px, pz = end
                 path_length += L
             elif kind == "arc":
@@ -700,15 +822,16 @@ class Circuit:
                     offsets[R] = abs(straight_offset(R, offset_wavelength))
                 r = R - offsets.get(R, 0.0)                                              # the guide's radius: closer to the center
                 begin = (center[0] - sign * r * np.cos(t), center[1] + sign * r * np.sin(t))
-                n, _ = self.free_arc(begin, r, phi, phi1, width=width, extended=True)
+                n, _ = self.free_arc(begin, r, phi, phi1, width=w, extended=True)
                 numbers.append(n)
                 px, pz, phi = center[0] - sign * R * np.cos(t1), center[1] + sign * R * np.sin(t1), phi1
                 path_length += R * abs(np.radians(turn))
                 arc_length += R * abs(np.radians(turn))
             else:
-                raise ValueError(f"Unknown piece {piece!r}: use ('line', length) or ('arc', radius, turn_degrees)")
-        return dict(segments=numbers, x_end=float(px), z_end=float(pz), heading_end=float(phi), path_length=float(path_length),
-                    arc_length=float(arc_length), offsets=offsets)
+                raise ValueError(f"Unknown piece {piece!r}: use ('line', length[, width]), ('taper', length, width[, profile]) "
+                                 f"or ('arc', radius, turn_degrees)")
+        return dict(segments=numbers, x_end=float(px), z_end=float(pz), heading_end=float(phi), width_end=w,
+                    path_length=float(path_length), arc_length=float(arc_length), offsets=offsets)
 
     def add_sidestep(self, x, z, R, angle_deg, straight, R2=None, shifts=None, direction=1, offsets=None):
         """An arc of radius R that turns the guide by angle_deg, a straight tilted by that angle (length `straight`), and a second arc
@@ -749,6 +872,20 @@ class Circuit:
         p7 = (p6[0] + s * sh3, p6[1])
         numbers = [self.arc(p1, p2), self.line(p3, p4), self.arc(p6, p5)]               # the second arc is written backward
         return dict(segments=numbers, x_end=float(p7[0]), z_end=float(p7[1]), path_length=float(R * a + straight + R2 * a))
+
+    def add_apd(self, x_top, x_bottom, z, apd, path_offset=0.0):
+        """Both arms of an achromatic phase delay (apd: the dict of read_apd_tables), straight along z from z: "top" at x_top and
+        "bottom" at x_bottom. Each arm is add_route(x, z, 0, apd_pieces(apd, arm), width=apd["guide_width"]) and its own chain of
+        segments, so give each its own pathway. To place or route an arm on its own, use apd_pieces with add_route directly.
+        path_offset (um): extra access-width guide at the end of the top arm (> 0) or of the bottom arm (< 0), as in the APD designs'
+        PATH_OFFSET_UM; each arm stays continuous, so the arms then end path_offset apart.
+        Returns a dict: top and bottom (each the add_route result, with x), length (the APD length without the offset)."""
+        out = {}
+        for name, x, dL in (("top", x_top, max(path_offset, 0.0)), ("bottom", x_bottom, max(-path_offset, 0.0))):
+            r = self.add_route(x, z, 0.0, apd_pieces(apd, name, dL), width=apd["guide_width"])
+            out[name] = dict(r, x=float(x))
+        out["length"] = apd["length"]
+        return out
 
     def add_tapered_arm(self, x, z, z_length, taper_width, taper_length, hold_length=0.0, start=None, profile="cosine"):
         """A straight arm with a width change: guide width, a taper up to taper_width over taper_length, hold_length at

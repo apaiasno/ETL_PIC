@@ -1,0 +1,696 @@
+
+Circuit_xmax = 720.531738
+Circuit_xmin = -53.325000
+Contrast = 1.02
+Grid_Edge = 0.5
+Grid_Size = 0.1
+Launch_filename_1 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+Launch_filename_2 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+Monitor_filename_1 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+Monitor_filename_2 = D:\\DATA\\ETL_PIC\\simulation\\rsoft_lib\\StraightWaveguide_neff_table\\StraightWaveguide_Wav1p550_Width3p400_ex.m00
+PML_width = 5.0
+Padding = 20.0
+Step_z = 0.1
+alpha = 0
+background_alpha = nimag($background_material)
+background_index = nreal($background_material)
+background_material = SiO2
+bc_type = BC_PML
+boundary_max = Circuit_xmax+Padding
+boundary_max_y = (height/2+Padding)
+boundary_min = Circuit_xmin-Padding
+boundary_min_y = -(height/2+Padding)
+cad_aspectratio_y = 1
+default_material = DopedSiO2
+delta = 0.1
+dimension = 3
+eim = 0
+free_space_wavelength = 1.55
+grid_edge_factor_x = Grid_Edge
+grid_edge_factor_y = Grid_Edge
+grid_nonuniform = 1
+grid_size = Grid_Size
+grid_size_y = Grid_Size
+height = 3.4
+k0 = (2*pi)/free_space_wavelength
+launch_align_file = 1
+launch_file = $Launch_filename_1
+launch_file_explicit = 1
+launch_normalization = 2
+launch_position = 0
+launch_position_y = 0
+launch_tilt = 1
+launch_type = LAUNCH_FILE
+monitor_file_explicit = 1
+pade_order = 2
+pade_order_warning_3d = 0
+pml_width_x = PML_width
+pml_width_y = PML_width
+sim_tool = ST_BEAMPROP
+slice_display_mode = DISPLAY_CONTOURMAPXZ
+slice_output_format = OUTPUT_AMP_PHASE
+step_size = Step_z
+structure = STRUCT_CHANNEL
+vector = 1
+width = 3.4
+
+
+material 1
+	name = DopedSiO2
+	origin = Path=/RSoft/Dielectrics/SiO2 Date=03/25/2022 Time=10:00
+	comment = Lambda_Min=0.2, Lambda_Max=3.37, Src=J.Opt.Soc.Am/Vol-55/pp-1205
+	optical
+		ni = Contrast*userimag("<rsoftmat>\\SiO2_nk.dat",free_space_wavelength)
+		nr = Contrast*userreal("<rsoftmat>\\SiO2_nk.dat",free_space_wavelength)
+	end optical
+	epsinf = 1
+	num_dsp = 3
+	delta_1 = 5873.621094
+	a_1 = 1
+	b_1 = 0
+	c_1 = 8437.094835
+	delta_2 = 1191.892625
+	a_2 = 1
+	b_2 = 0
+	c_2 = 2921.716498
+	delta_3 = 0.3622641
+	a_3 = 1
+	b_3 = 0
+	c_3 = 0.4036462
+	electro_optic
+		eps_xx = 3.8
+		eps_yy = 3.8
+		eps_zz = 3.8
+	end electro_optic
+	thermo_optic
+		kappa_xx = 1.38*1e-6
+		kappa_yy = 1.38*1e-6
+		kappa_zz = 1.38*1e-6
+		r = 1e-05
+	end thermo_optic
+	stress_optic
+		E = 76.7
+		alpha = 5.4e-07
+		nu = 0.186
+		p1 = 0.16
+		p2 = 0.27
+	end stress_optic
+	semiconductor
+		elem_matfile = Oxide.mat
+		reg_regtype = oxide
+	end semiconductor
+end material
+
+material 2
+	name = SiO2
+	origin = Path=/RSoft/Dielectrics/SiO2 Date=03/25/2022 Time=10:00
+	comment = Lambda_Min=0.2, Lambda_Max=3.37, Src=J.Opt.Soc.Am/Vol-55/pp-1205
+	optical
+		ni = userimag("<rsoftmat>\\SiO2_nk.dat",free_space_wavelength)
+		nr = userreal("<rsoftmat>\\SiO2_nk.dat",free_space_wavelength)
+	end optical
+	epsinf = 1
+	num_dsp = 3
+	delta_1 = 5873.621094
+	a_1 = 1
+	b_1 = 0
+	c_1 = 8437.094835
+	delta_2 = 1191.892625
+	a_2 = 1
+	b_2 = 0
+	c_2 = 2921.716498
+	delta_3 = 0.3622641
+	a_3 = 1
+	b_3 = 0
+	c_3 = 0.4036462
+	electro_optic
+		eps_xx = 3.8
+		eps_yy = 3.8
+		eps_zz = 3.8
+	end electro_optic
+	thermo_optic
+		kappa_xx = 1.38*1e-6
+		kappa_yy = 1.38*1e-6
+		kappa_zz = 1.38*1e-6
+		r = 1e-05
+	end thermo_optic
+	stress_optic
+		E = 76.7
+		alpha = 5.4e-07
+		nu = 0.186
+		p1 = 0.16
+		p2 = 0.27
+	end stress_optic
+	semiconductor
+		elem_matfile = Oxide.mat
+		reg_regtype = oxide
+	end semiconductor
+end material
+
+
+user_taper 1
+	type = UF_EXPRESSION
+	expression = 0.5 - 0.5*cos(180*z)
+	xpoints = 160/Step_z
+end user_taper
+
+user_taper 2
+	type = UF_EXPRESSION
+	expression = 0.5 - 0.5*cos(180*z)
+	xpoints = 60/Step_z
+end user_taper
+
+user_taper 3
+	type = UF_EXPRESSION
+	expression = 0.5 - 0.5*cos(180*z)
+	xpoints = 80/Step_z
+end user_taper
+
+segment 1
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 0.000000
+	end.x = -50.000000
+	end.z = 160.000000
+	width_taper = TAPER_USER_1
+	begin.width = 3.400000
+	end.width = 6.650000
+end segment
+
+segment 2
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 160.000000
+	end.x = -50.000000
+	end.z = 220.000000
+	begin.width = 6.650000
+	end.width = 6.650000
+end segment
+
+segment 3
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 220.000000
+	end.x = -50.000000
+	end.z = 380.000000
+	width_taper = TAPER_USER_1
+	begin.width = 6.650000
+	end.width = 5.450000
+end segment
+
+segment 4
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 380.000000
+	end.x = -50.000000
+	end.z = 525.746000
+	begin.width = 5.450000
+	end.width = 5.450000
+end segment
+
+segment 5
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 525.746000
+	end.x = -50.000000
+	end.z = 685.746000
+	width_taper = TAPER_USER_1
+	begin.width = 5.450000
+	end.width = 5.850000
+end segment
+
+segment 6
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 685.746000
+	end.x = -50.000000
+	end.z = 844.493000
+	begin.width = 5.850000
+	end.width = 5.850000
+end segment
+
+segment 7
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 844.493000
+	end.x = -50.000000
+	end.z = 904.493000
+	width_taper = TAPER_USER_2
+	begin.width = 5.850000
+	end.width = 5.900000
+end segment
+
+segment 8
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 904.493000
+	end.x = -50.000000
+	end.z = 1027.523000
+	begin.width = 5.900000
+	end.width = 5.900000
+end segment
+
+segment 9
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 1027.523000
+	end.x = -50.000000
+	end.z = 1087.523000
+	width_taper = TAPER_USER_2
+	begin.width = 5.900000
+	end.width = 6.100000
+end segment
+
+segment 10
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 1087.523000
+	end.x = -50.000000
+	end.z = 1156.656000
+	begin.width = 6.100000
+	end.width = 6.100000
+end segment
+
+segment 11
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 1156.656000
+	end.x = -50.000000
+	end.z = 1316.656000
+	width_taper = TAPER_USER_1
+	begin.width = 6.100000
+	end.width = 2.650000
+end segment
+
+segment 12
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 1316.656000
+	end.x = -50.000000
+	end.z = 1408.363000
+	begin.width = 2.650000
+	end.width = 2.650000
+end segment
+
+segment 13
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 1408.363000
+	end.x = -50.000000
+	end.z = 1568.363000
+	width_taper = TAPER_USER_1
+	begin.width = 2.650000
+	end.width = 4.200000
+end segment
+
+segment 14
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 1568.363000
+	end.x = -50.000000
+	end.z = 1628.363000
+	begin.width = 4.200000
+	end.width = 4.200000
+end segment
+
+segment 15
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 1628.363000
+	end.x = -50.000000
+	end.z = 1708.363000
+	width_taper = TAPER_USER_3
+	begin.width = 4.200000
+	end.width = 3.000000
+end segment
+
+segment 16
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 1708.363000
+	end.x = -50.000000
+	end.z = 1804.628000
+	begin.width = 3.000000
+	end.width = 3.000000
+end segment
+
+segment 17
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 1804.628000
+	end.x = -50.000000
+	end.z = 1964.628000
+	width_taper = TAPER_USER_1
+	begin.width = 3.000000
+	end.width = 3.400000
+end segment
+
+segment 18
+	extended = 1
+	begin.x = -50.000000
+	begin.z = 1964.628000
+	end.x = -50.000000
+	end.z = 5964.628000
+end segment
+
+segment 19
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 0.000000
+	end.x = 50.000000
+	end.z = 160.000000
+	width_taper = TAPER_USER_1
+	begin.width = 3.400000
+	end.width = 2.450000
+end segment
+
+segment 20
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 160.000000
+	end.x = 50.000000
+	end.z = 220.000000
+	begin.width = 2.450000
+	end.width = 2.450000
+end segment
+
+segment 21
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 220.000000
+	end.x = 50.000000
+	end.z = 380.000000
+	width_taper = TAPER_USER_1
+	begin.width = 2.450000
+	end.width = 5.250000
+end segment
+
+segment 22
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 380.000000
+	end.x = 50.000000
+	end.z = 525.746000
+	begin.width = 5.250000
+	end.width = 5.250000
+end segment
+
+segment 23
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 525.746000
+	end.x = 50.000000
+	end.z = 685.746000
+	width_taper = TAPER_USER_1
+	begin.width = 5.250000
+	end.width = 4.500000
+end segment
+
+segment 24
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 685.746000
+	end.x = 50.000000
+	end.z = 844.493000
+	begin.width = 4.500000
+	end.width = 4.500000
+end segment
+
+segment 25
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 844.493000
+	end.x = 50.000000
+	end.z = 904.493000
+	width_taper = TAPER_USER_2
+	begin.width = 4.500000
+	end.width = 4.950000
+end segment
+
+segment 26
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 904.493000
+	end.x = 50.000000
+	end.z = 1027.523000
+	begin.width = 4.950000
+	end.width = 4.950000
+end segment
+
+segment 27
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 1027.523000
+	end.x = 50.000000
+	end.z = 1087.523000
+	width_taper = TAPER_USER_2
+	begin.width = 4.950000
+	end.width = 5.200000
+end segment
+
+segment 28
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 1087.523000
+	end.x = 50.000000
+	end.z = 1156.656000
+	begin.width = 5.200000
+	end.width = 5.200000
+end segment
+
+segment 29
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 1156.656000
+	end.x = 50.000000
+	end.z = 1316.656000
+	width_taper = TAPER_USER_1
+	begin.width = 5.200000
+	end.width = 4.750000
+end segment
+
+segment 30
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 1316.656000
+	end.x = 50.000000
+	end.z = 1408.363000
+	begin.width = 4.750000
+	end.width = 4.750000
+end segment
+
+segment 31
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 1408.363000
+	end.x = 50.000000
+	end.z = 1568.363000
+	width_taper = TAPER_USER_1
+	begin.width = 4.750000
+	end.width = 4.050000
+end segment
+
+segment 32
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 1568.363000
+	end.x = 50.000000
+	end.z = 1628.363000
+	begin.width = 4.050000
+	end.width = 4.050000
+end segment
+
+segment 33
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 1628.363000
+	end.x = 50.000000
+	end.z = 1708.363000
+	width_taper = TAPER_USER_3
+	begin.width = 4.050000
+	end.width = 4.800000
+end segment
+
+segment 34
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 1708.363000
+	end.x = 50.000000
+	end.z = 1804.628000
+	begin.width = 4.800000
+	end.width = 4.800000
+end segment
+
+segment 35
+	extended = 1
+	begin.x = 50.000000
+	begin.z = 1804.628000
+	end.x = 50.000000
+	end.z = 1964.628000
+	width_taper = TAPER_USER_1
+	begin.width = 4.800000
+	end.width = 3.400000
+end segment
+
+segment 36
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1400
+	arc_iangle = 0
+	arc_fangle = 40.43594784
+	begin.x = 50.000000
+	begin.z = 1964.628000
+	end.x = 384.415869
+	end.z = 2872.664596
+end segment
+
+segment 37
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1400
+	arc_iangle = 40.43594784
+	arc_fangle = 0
+	begin.x = 384.415869
+	begin.z = 2872.664596
+	end.x = 718.831738
+	end.z = 3780.701193
+end segment
+
+segment 38
+	extended = 1
+	begin.x = 718.831738
+	begin.z = 3780.701193
+	end.x = 718.831738
+	end.z = 4148.554807
+end segment
+
+segment 39
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1400
+	arc_iangle = 0
+	arc_fangle = -40.43594784
+	begin.x = 718.831738
+	begin.z = 4148.554807
+	end.x = 384.415869
+	end.z = 5056.591404
+end segment
+
+segment 40
+	extended = 1
+	position_taper = TAPER_ARC
+	arc_type = ARC_FREE
+	arc_radius = 1400
+	arc_iangle = -40.43594784
+	arc_fangle = 0
+	begin.x = 384.415869
+	begin.z = 5056.591404
+	end.x = 50.000000
+	end.z = 5964.628000
+end segment
+
+pathway 1
+	1
+	2
+	3
+	4
+	5
+	6
+	7
+	8
+	9
+	10
+	11
+	12
+	13
+	14
+	15
+	16
+	17
+	18
+end pathway
+
+pathway 2
+	19
+	20
+	21
+	22
+	23
+	24
+	25
+	26
+	27
+	28
+	29
+	30
+	31
+	32
+	33
+	34
+	35
+	36
+	37
+	38
+	39
+	40
+end pathway
+
+
+monitor 1
+	pathway = 1
+	monitor_type = MONITOR_FILE_POWER
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_1
+end monitor
+
+monitor 2
+	pathway = 1
+	monitor_type = MONITOR_FILE_PHASE
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_1
+end monitor
+
+monitor 3
+	pathway = 2
+	monitor_type = MONITOR_FILE_POWER
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_2
+end monitor
+
+monitor 4
+	pathway = 2
+	monitor_type = MONITOR_FILE_PHASE
+	monitor_tilt = 1
+	monitor_component = COMPONENT_BOTH
+	monitor_file = $Monitor_filename_2
+end monitor
+
+
+launch_field 1
+	launch_pathway = 1
+	launch_type = LAUNCH_FILE
+	launch_tilt = 1
+	launch_normalization = 2
+	launch_align_file = 1
+	launch_position = -50.000000
+	launch_position_y = 0
+	launch_file = $Launch_filename_1
+end launch_field
+
+launch_field 2
+	launch_pathway = 2
+	launch_type = LAUNCH_FILE
+	launch_tilt = 1
+	launch_normalization = 2
+	launch_align_file = 1
+	launch_position = 50.000000
+	launch_position_y = 0
+	launch_file = $Launch_filename_2
+end launch_field
+
