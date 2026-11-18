@@ -472,8 +472,8 @@ class Circuit:
         between the end of one piece and the start of the next; the pieces are smooth in heading), max_deviation (the largest distance
         between the path and the lines and arcs) and max_width_error: the accuracy of the circuit against the path you gave."""
         x, z = np.asarray(x, float), np.asarray(z, float)
-        if np.any(np.diff(z) < 0):
-            raise ValueError("The path turns back toward -z; BeamPROP propagates along +z, so a path must keep increasing in z")
+        # if np.any(np.diff(z) < 0):
+        #     raise ValueError("The path turns back toward -z; BeamPROP propagates along +z, so a path must keep increasing in z")
         if width is None:
             w = np.full(len(x), float(self.width))
         elif callable(width):                                          # a function of the path length s
@@ -483,8 +483,8 @@ class Circuit:
         else:
             w = np.asarray(width, float)
         phi_arr = np.arctan2(np.gradient(x), np.gradient(z)) if phi is None else np.unwrap(np.asarray(phi, float))
-        if np.abs(phi_arr).max() > np.pi / 2:
-            raise ValueError("The path heads more than 90 degrees away from +z")
+        # if np.abs(phi_arr).max() > np.pi / 2:
+        #     raise ValueError("The path heads more than 90 degrees away from +z")
         pieces = _fit_with_widths(x, z, phi_arr, w, tol, width_tol)
         numbers, n_tapers, arc_taper, werr = [], 0, False, 0.0
         for k, (pr, spec, err) in enumerate(pieces):

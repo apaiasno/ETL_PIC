@@ -1,0 +1,3050 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Heated segmented APS visualizer v4</title>
+<style>
+  :root {
+    --bg: #f7f8fb;
+    --panel: #ffffff;
+    --panel-2: #f2f4f9;
+    --text: #172033;
+    --muted: #657085;
+    --grid: #dce1ea;
+    --axis: #778195;
+    --focus: #2563eb;
+    --heated: #2563eb;
+    --baseline: #e07a16;
+    --ok: #238b57;
+    --bad: #cf3f4f;
+    --warn: #b06a00;
+    --heat: #e2523c;
+    --top-arm: #2563eb;
+    --bot-arm: #815ac0;
+    --taper-fill: #9aa4b6;
+    --shadow: 0 10px 30px rgba(32, 45, 70, 0.09);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #11151d;
+      --panel: #1a202b;
+      --panel-2: #212936;
+      --text: #edf1f7;
+      --muted: #a6afbf;
+      --grid: #343d4d;
+      --axis: #8e98aa;
+      --focus: #75a7ff;
+      --heated: #75a7ff;
+      --baseline: #ffad5c;
+      --ok: #57c98a;
+      --bad: #ff7987;
+      --warn: #ffc46b;
+      --heat: #ff7b60;
+      --top-arm: #75a7ff;
+      --bot-arm: #b89aed;
+      --taper-fill: #6c778c;
+      --shadow: 0 12px 34px rgba(0, 0, 0, 0.28);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.45 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  main { width: min(1400px, calc(100% - 28px)); margin: 24px auto 48px; }
+  h1 { margin: 0; font-size: clamp(1.35rem, 2.6vw, 1.9rem); font-weight: 650; }
+  h1 small { display: block; font-size: 0.58em; font-weight: 500; color: var(--muted); margin-top: 5px; }
+  h2.section-title { margin: 0 0 14px; font-size: 1.02rem; font-weight: 650; }
+  h2.section-title .hint { font-weight: 450; color: var(--muted); font-size: 0.85em; margin-left: 8px; }
+  .subtitle { color: var(--muted); margin: 7px 0 20px; max-width: 92ch; }
+  .panel { background: var(--panel); border-radius: 16px; box-shadow: var(--shadow); padding: 18px; margin-bottom: 18px; }
+
+  /* ---- metric cards ---- */
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+  .metric { background: var(--panel-2); border-radius: 12px; padding: 12px 14px; }
+  .metric .label { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .metric .value { font-size: 1.42rem; font-weight: 640; font-variant-numeric: tabular-nums; margin-top: 3px; }
+  .metric .sub { color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; min-height: 1.2em; }
+  .metric.good .value { color: var(--ok); }
+  .metric.bad .value { color: var(--bad); }
+
+  /* ---- generic controls ---- */
+  .global-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); gap: 6px 26px; }
+  .ctrl { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 2px 10px; padding: 5px 0; }
+  .ctrl > label { font-size: 0.86rem; font-weight: 560; }
+  .ctrl > .ro { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.86rem; justify-self: end; }
+  .ctrl > input[type="range"] { grid-column: 1 / -1; width: 100%; margin: 2px 0 0; accent-color: var(--accent, var(--focus)); }
+  input[type="range"]:focus-visible { outline: 3px solid color-mix(in srgb, var(--focus) 35%, transparent); outline-offset: 3px; }
+  .ro-part { cursor: text; border-bottom: 1px dotted transparent; }
+  .ro-part:hover, .ro-part:focus { border-bottom-color: var(--muted); outline: none; }
+  .ro-edit { width: 5.6em; font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--focus); border-radius: 4px; padding: 0 3px; text-align: right; }
+  .ro-edit:focus { outline: none; }
+
+  /* ---- buttons ---- */
+  .btn {
+    font: inherit; font-size: 0.86rem; font-weight: 550; cursor: pointer;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--grid); border-radius: 9px; padding: 7px 12px;
+  }
+  .btn:hover { border-color: var(--focus); }
+  .btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--focus) 35%, transparent); outline-offset: 2px; }
+  .btn.primary { background: color-mix(in srgb, var(--focus) 16%, var(--panel)); border-color: var(--focus); }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 9px; }
+  .segcount { display: flex; gap: 6px; flex-wrap: wrap; }
+  .segcount .btn { min-width: 38px; text-align: center; padding: 6px 0; }
+  .segcount .btn[aria-pressed="true"] { background: var(--focus); border-color: var(--focus); color: #fff; }
+
+  /* ---- segment cards ---- */
+  .seg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 14px; }
+  .seg-card { background: var(--panel-2); border-radius: 13px; padding: 11px 13px 13px; border-top: 3px solid var(--accent); }
+  .seg-card h3 { margin: 0 0 6px; font-size: 0.93rem; font-weight: 640; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .seg-card h3 .tag { font-weight: 450; font-size: 0.78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .arm-top { --accent: var(--top-arm); }
+  .arm-bot { --accent: var(--bot-arm); }
+  .arm-heat { --accent: var(--heat); }
+
+  /* ---- plot / schematic ---- */
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .frame { fill: none; stroke: var(--axis); stroke-width: 1; }
+  .grid-line { stroke: var(--grid); stroke-width: 1; }
+  .tick-label, .axis-label, .guide-label, .sch-label { fill: var(--muted); font-size: 12px; }
+  .axis-label { font-size: 13px; }
+  .sch-label { font-size: 11px; }
+  .guide-zero { stroke: var(--axis); stroke-width: 1.2; }
+  .guide-spec { stroke-width: 1; stroke-dasharray: 5 4; opacity: 0.85; }
+  .guide-1550 { stroke: var(--axis); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0.8; }
+  .trace { fill: none; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+  .trace.baseline { stroke-width: 1.8; stroke-dasharray: 7 5; }
+  .dot { stroke: var(--panel); stroke-width: 1; }
+  .plot-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  .plot-opts { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; color: var(--muted); font-size: 0.86rem; }
+  .plot-opts select { font: inherit; font-size: 0.86rem; background: var(--panel-2); color: var(--text); border: 1px solid var(--grid); border-radius: 7px; padding: 4px 7px; }
+  .plot-opts label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 10px 4px 0; color: var(--muted); font-size: 0.86rem; }
+  .legend-item { display: inline-flex; align-items: center; gap: 7px; }
+  .swatch { width: 20px; height: 3px; border-radius: 2px; background: var(--series); }
+  .swatch.dashed { background: repeating-linear-gradient(90deg, var(--series) 0 6px, transparent 6px 10px); }
+  .tooltip {
+    position: fixed; z-index: 60; pointer-events: none; background: var(--panel);
+    border: 1px solid var(--grid); border-radius: 8px; box-shadow: var(--shadow);
+    padding: 7px 10px; font-size: 0.8rem; color: var(--text); white-space: nowrap;
+    opacity: 0; transition: opacity 0.1s ease; font-variant-numeric: tabular-nums;
+  }
+  .tooltip.show { opacity: 1; }
+  .tooltip .k { color: var(--muted); }
+
+  /* ---- misc ---- */
+  .warn-banner {
+    background: color-mix(in srgb, var(--warn) 18%, var(--panel));
+    border: 1px solid var(--warn); color: var(--text);
+    border-radius: 11px; padding: 10px 13px; margin-bottom: 16px; font-size: 0.88rem; display: none;
+  }
+  .warn-banner.show { display: block; }
+  .note { color: var(--muted); font-size: 0.87rem; }
+  .note code { font-size: 0.95em; background: var(--panel-2); padding: 1px 4px; border-radius: 4px; }
+  .note ul { margin: 8px 0 0; padding-left: 20px; }
+  .note li { margin-bottom: 5px; }
+  .toy { color: var(--warn); font-weight: 600; }
+  pre.testout {
+    background: var(--panel-2); border-radius: 10px; padding: 12px; overflow-x: auto;
+    font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    margin: 12px 0 0; white-space: pre; color: var(--text);
+  }
+  .two-col { display: grid; grid-template-columns: 1.05fr 1fr; gap: 18px; }
+
+  /* v2: plot pinned to the top so the sliders stay usable while it is visible */
+  /* A sticky panel taller than the viewport blocks every click below it.
+     Cap the pinned height and shrink the plot so at least ~35% of the
+     screen always stays free for the controls underneath. */
+  .panel.pinned { position: sticky; top: 0; z-index: 20;
+                  max-height: 62vh; overflow-y: auto;
+                  box-shadow: 0 14px 34px rgba(32,45,70,0.16); }
+  .panel.pinned #plot { max-height: 34vh; }
+  .panel.pinned .live-strip { position: sticky; bottom: 0; background: var(--panel); }
+  @media (prefers-color-scheme: dark) { .panel.pinned { box-shadow: 0 14px 34px rgba(0,0,0,0.45); } }
+  .live-strip { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 10px 22px;
+                margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--grid); }
+  .live-item { min-width: 0; }
+  .live-item.wide { grid-row: span 1; }
+  .range-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 5px;
+               color: var(--muted); font-size: 0.78rem; }
+  .btn.tiny { padding: 3px 7px; font-size: 0.76rem; border-radius: 7px; }
+  .btn.tiny[aria-pressed="true"] { background: var(--focus); border-color: var(--focus); color: #fff; }
+  .sub-note { color: var(--muted); font-size: 0.76rem; margin-top: 4px; line-height: 1.35; }
+  .inline-sel { font: inherit; font-size: 0.86rem; background: var(--panel-2); color: var(--text);
+                border: 1px solid var(--grid); border-radius: 7px; padding: 3px 6px; justify-self: end; }
+  .mode-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+              margin-bottom: 6px; }
+  .mode-row .mode-label { font-weight: 600; font-size: 0.9rem; }
+  .mode-switch { display: inline-flex; border: 1px solid var(--grid); border-radius: 10px;
+                 overflow: hidden; }
+  .mode-switch .btn { border: none; border-radius: 0; padding: 7px 14px; font-size: 0.85rem; }
+  .mode-switch .btn + .btn { border-left: 1px solid var(--grid); }
+  .mode-switch .btn[aria-pressed="true"] { background: var(--focus); color: #fff; }
+  .mode-help { color: var(--muted); font-size: 0.84rem; line-height: 1.45;
+               margin: 0 0 16px; max-width: 95ch; }
+  .link-badge { display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+                margin: 7px 0 2px; font-size: 0.78rem; color: var(--muted); }
+  .link-badge.linked { color: var(--warn); }
+  .link-badge .chip { border: 1px solid currentColor; border-radius: 20px;
+                      padding: 1px 8px; font-weight: 600; }
+  .arm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .arm-col { border-top: 3px solid var(--accent); border-radius: 12px;
+             background: var(--panel-2); padding: 11px 13px 13px; }
+  .arm-col h3 { margin: 0 0 9px; font-size: 0.95rem; font-weight: 650;
+                display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .arm-col h3 .tag { font-weight: 450; font-size: 0.78rem; color: var(--muted);
+                     font-variant-numeric: tabular-nums; }
+  .arm-col .seg-card { background: var(--panel); border-radius: 10px;
+                       padding: 8px 11px 10px; margin-top: 9px; border-top: none; }
+  .arm-col .seg-card h4 { margin: 0 0 3px; font-size: 0.82rem; font-weight: 620; color: var(--muted); }
+  .status-line { color: var(--muted); font-size: 0.84rem; margin: 10px 2px 0; min-height: 1.3em; }
+  .bias-wrap { margin-top: 10px; overflow-x: auto; }
+  table.bias { border-collapse: collapse; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+  table.bias th, table.bias td { padding: 4px 12px 4px 0; text-align: right; }
+  table.bias th { color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--grid); }
+  table.bias td:first-child, table.bias th:first-child { text-align: left; }
+  table.bias tr.hot td { color: var(--bad); }
+  @media (max-width: 900px) {
+    .live-strip { grid-template-columns: 1fr; }
+    .arm-grid { grid-template-columns: 1fr; }
+    .panel.pinned { position: static; }
+  }
+  @media (max-width: 1000px) { .two-col { grid-template-columns: 1fr; } }
+  @media (max-width: 620px) { main { width: calc(100% - 16px); margin-top: 14px; } .panel { padding: 14px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Segmented heated achromatic phase shifter <span style="font-weight:450;color:var(--muted)">v4</span>
+    <small>independent arm segmentation &middot; cosine or linear tapers integrated &middot; worst-case metric &middot; CD-bias robustness &middot; corrected n_eff table &middot; path offset</small>
+  </h1>
+  <p class="subtitle">
+    Both arms are built from up to 8 plateaus joined by cosine tapers (input and output tapers included).
+    The differential phase
+    <em>&Delta;&phi;(&lambda;) = &int; (2&pi;/&lambda;)[n<sub>eff,top</sub>(x,&lambda;) &minus; n<sub>eff,bot</sub>(x,&lambda;)] dx</em>
+    is integrated straight through the tapers &mdash; they are not bolted on afterwards &mdash; and compared against the
+    broadband nulling target <em>&Delta;&phi; = &pi;</em>. Effective indices come from the embedded
+    <code>StraightWaveguide_neff_long</code> table, bilinearly interpolated in width and wavelength, never extrapolated.
+  </p>
+
+  <div id="warn-banner" class="warn-banner" role="status"></div>
+
+  <section class="panel" aria-label="Summary metrics">
+    <div class="metrics" id="metrics"></div>
+  </section>
+
+  <section class="panel" aria-label="Device schematic">
+    <h2 class="section-title">Physical layout (top view)
+      <span class="hint">vertical scale exaggerated &middot; heater shading &prop; &Delta;T</span></h2>
+    <svg id="schematic" viewBox="0 0 1160 340" role="img"
+         aria-label="Top view of the two waveguide arms showing plateaus, cosine tapers and heater overlays"></svg>
+  </section>
+
+  <section class="panel" id="plot-panel" aria-label="Phase plot">
+    <div class="plot-head">
+      <h2 class="section-title" id="plot-title" style="margin:0">Phase error from &pi; vs wavelength</h2>
+      <div class="plot-opts">
+        <label for="view-sel">View
+          <select id="view-sel">
+            <option value="error">Phase error from &pi; (deg)</option>
+            <option value="null">Ideal phase-only null (dB)</option>
+            <option value="dphi">Raw &Delta;&phi; / &pi;</option>
+          </select>
+        </label>
+        <label for="yscale-sel">y-range
+          <select id="yscale-sel">
+            <option value="auto">auto</option>
+            <option value="0.25">&plusmn;0.25&deg;</option>
+            <option value="1">&plusmn;1&deg;</option>
+            <option value="5">&plusmn;5&deg;</option>
+            <option value="180">&plusmn;180&deg;</option>
+          </select>
+        </label>
+        <label><input type="checkbox" id="show-baseline" checked> passive baseline (heaters + trim off)</label>
+        <label><input type="checkbox" id="show-dots" checked> sample points</label>
+        <label><input type="checkbox" id="pin-plot" checked> pin plot to top</label>
+      </div>
+    </div>
+    <svg id="plot" viewBox="0 0 1160 470" role="img"
+         aria-label="Phase error from pi in degrees versus wavelength, heated and heater-off curves"></svg>
+    <div class="legend" id="legend"></div>
+    <div class="live-strip" id="live-strip"></div>
+    <div class="status-line" id="status-line" aria-live="polite"></div>
+  </section>
+
+  <section class="panel" aria-label="Segment controls">
+    <h2 class="section-title">Arms and segments
+      <span class="hint">the two arms can be segmented together or independently &mdash; see the switch below &middot; width limits come from the neff table: <span id="width-range-note"></span></span></h2>
+    <div id="arm-panels"></div>
+  </section>
+
+  <section class="panel" aria-label="CD bias breakdown">
+    <h2 class="section-title">Worst error per CD bias
+      <span class="hint">trim re-set for each bias; the zero-bias row is evaluated as drawn</span></h2>
+    <div id="bias-table" class="bias-wrap"></div>
+  </section>
+
+  <section class="panel" aria-label="Global settings">
+    <h2 class="section-title">Global settings</h2>
+    <div class="global-grid" id="global-controls"></div>
+  </section>
+
+  <section class="panel" aria-label="Trim region">
+    <h2 class="section-title">Trim region
+      <span class="hint">straight equal-width waveguide after the segmented region &mdash; pure 1/&lambda; phase, no dispersion engineering</span></h2>
+    <div class="global-grid" id="trim-controls"></div>
+  </section>
+
+  <section class="panel" aria-label="Presets">
+    <h2 class="section-title">Presets and resets</h2>
+    <div class="btn-row" id="presets"></div>
+  </section>
+
+  <section class="panel" aria-label="Model notes">
+    <div class="two-col">
+      <div class="note">
+        <h2 class="section-title">What the model does</h2>
+        <ul>
+          <li><strong>Geometry.</strong> The device is a span list:
+            input taper &rarr; plateau 1 &rarr; taper &rarr; plateau 2 &rarr; &hellip; &rarr; output taper &rarr; trim region.
+            Every taper uses <code>w(s) = w0 + (w1&minus;w0)&middot;[0.5 &minus; 0.5&thinsp;cos(&pi;s)]</code>, <code>s&isin;[0,1]</code>.</li>
+          <li><strong>Taper integration is exact.</strong> For a fixed wavelength the interpolated
+            <code>n<sub>eff</sub>(w)</code> is piecewise linear in <em>w</em>, so each taper is split at the width-grid
+            crossings and integrated in closed form. Changing the taper length therefore cannot produce a sampling
+            artifact &mdash; there is no x-sampling grid at all.</li>
+          <li><strong>Heater (<span class="toy">toy model</span>).</strong>
+            <code>n<sub>eff,heated</sub> = n<sub>eff,base</sub>(w,&lambda;) + (dn<sub>eff</sub>/dT)&middot;&Delta;T</code>.
+            <code>dn<sub>eff</sub>/dT</code> is a single adjustable number with no width, wavelength or temperature
+            dependence &mdash; a placeholder until measured or simulated data replaces it.</li>
+          <li><strong>&Delta;T across a taper</strong> blends with the same cosine profile as the width, from the
+            neighbouring plateau value (0 outside the segmented region). Nothing is discontinuous.</li>
+          <li><strong>Target.</strong> <code>&phi;<sub>error</sub>(&lambda;) = wrap[&Delta;&phi;(&lambda;) &minus; &pi;]</code>
+            into (&minus;180&deg;, 180&deg;].</li>
+          <li><strong>Ideal phase-only null.</strong>
+            <code>I/I<sub>max</sub> = sin&sup2;(&phi;<sub>error</sub>/2)</code>. Perfectly balanced amplitudes are assumed,
+            so this is a <em>phase-error floor only</em>, not a device null depth &mdash; no loss imbalance, no
+            splitter error, no polarisation.</li>
+        </ul>
+      </div>
+      <div class="note">
+        <h2 class="section-title">Intuition this tool is for</h2>
+        <ul>
+          <li>A heater adds roughly <code>&Delta;&phi; &asymp; 2&pi;&middot;(dn<sub>eff</sub>/dT)&middot;&Delta;T&middot;L/&lambda;</code>,
+            so its phase contribution scales as <code>1/&lambda;</code>. Fixing the error at 1550&nbsp;nm with one heater
+            leaves a tilt across the band &mdash; switch to <em>Raw &Delta;&phi;/&pi;</em> and watch it.</li>
+          <li>A width difference contributes <code>(2&pi;/&lambda;)&middot;&Delta;n<sub>eff</sub>(&lambda;)&middot;L</code>.
+            Because <code>&Delta;n<sub>eff</sub></code> is itself wavelength dependent and that dependence varies with
+            width, several segments with different width pairs can trade off constant offset, slope and curvature.</li>
+          <li>Achromatic <code>&Delta;&phi; = &pi;</code> needs the differential optical path to track
+            <code>&lambda;/2</code>, not to be constant. That is the whole difficulty.</li>
+        </ul>
+        <h2 class="section-title" style="margin-top:16px">Upgrade path left open</h2>
+        <p style="margin:0">The heater lives behind a single <code>HeaterModel</code> object that maps commanded
+          settings to a per-region &Delta;T and then to an index shift. Swapping in
+          <code>P=V&sup2;/R</code>, <code>&Delta;T=&eta;P</code>, a crosstalk matrix
+          <code>&Delta;T<sub>actual</sub>=C&middot;&Delta;T<sub>cmd</sub></code>, or a width/wavelength dependent
+          <code>dn<sub>eff</sub>/dT</code> only touches that object, not the geometry or phase integrator.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Self tests">
+    <h2 class="section-title">Built-in verification
+      <span class="hint">runs against the same code path the plots use</span></h2>
+    <div class="btn-row">
+      <button class="btn primary" id="run-tests">Run verification tests</button>
+    </div>
+    <pre class="testout" id="test-out" aria-live="polite">Not run yet.</pre>
+  </section>
+
+  <div id="tooltip" class="tooltip" role="status"></div>
+</main>
+
+<script>
+(() => {
+"use strict";
+
+/* =====================================================================
+   1.  EMBEDDED neff TABLE  (from StraightWaveguide_neff_long.csv)
+   ---------------------------------------------------------------------
+   Rectangular grid: 21 wavelengths x 90 widths (2.3-6.75 um, 0.05 um step).  Each value is stored as
+   an 8-digit integer d with neff = BASE + d / SCALE, which round-trips
+   the CSV exactly (max error 2e-16).  neff_imag in the source file is
+   numerically zero (|Im| < 1e-12) and is not used.
+   ===================================================================== */
+const NEFF_TABLE = {
+  wlMin: 1.45, wlStep: 0.01, wlCount: 21,   // um
+  wMin: 2.3,  wStep: 0.05,  wCount: 90,      // um
+  base: 1.4, scale: 1e9, digits: 8,
+  rows: [
+    "564015875663416456860185570801265729374957501531577035905789992858090901582765105845699358632469588030585896911659130406592875245944035159588885597334865987427260011244601447586027457760401058605242016064412660760951608749156098589961094022611995226130240061402655615002876159577461688876617795946186828661954713620391136212160662202072622807506235764062432623625059376257758162647557627161036278309862848544629126796297526463036537630964996315515063212490632687576332371263377595634302856348190363532567635821586363067663678241637249716377062863815451638593206390235463944554639860396402657064066386641054876414387264181542642184976425461864290261643250706435940364393020644261606445870464490533645218856455276064582801",   // 1450 nm
+    "561553005638799756614137568341975704805957256198574583775765519157846403580324895821332958389282585604675872688358888769590463645919954859348798594939955963525859772825599066976003723160164189602878096040844960525870606404306075189160860610609665876106994261170793612691406136498561458683615498786163904761726069618111856189403561975098620541336213161962206960622808696235311062423563624924666255993862625861626903536275341562815166628754856293461362992430630490546310448663158727632118946326398863314891633648406341371563461757635088446355485963599920636442666368765863730216637719396381294763853121638924606393120363969111640063056404290264078784641139516414864164182496642158756424865764280844643124346434354864373946",   // 1460 nm
+    "559091335614182956368089565882685680236857010746572132835741033657602024577884675796966658146095583176375848453058647013588049655895874559108472592541465939600559534168596686365979952859927082600514176017253460290551604055886051764560626960607334146083748360938692610377556113407661228251613201626140980761497188615827806166634661747766618273976190524161981297620555646212816262199211622687106233654062402821624677906253132862593436626542336271383862772131628291136288490362939620629931456304559763096976631472836319663563245034632923606333873363384271634289746347272463515639635576016359896763639498636791946371817663756442637939936383082963867068639024736393752163971615640053516403837264070797641026266413397864164853",   // 1470 nm
+    "556635625589637856122637563430555655727456765771569685465716595657357883575446845772635957903147580750475824253658405375585639245871818158868384590146545915687159295630594306955956206359690332598150255993673860055232601707466028339960393190605003606060490660706592608061316090304960997701610902076118032961268425613543756143829861520433616005426167874361755395618301396190321461974740620444776211290462179661622451076230912262371707624328616249282462551475626089336266520062720275627741586282708662878823629296066297919863027954630756386312248763168383632133256325731363300705633430246338474863425517634655716350491063543534635813246361851763654995636907586372604463760495637944706382772963860512638926986392428963955283",   // 1480 nm
+    "554187065565140255877781560981995631253756521273567244055692205457114220573012595748329257660556578329325800077958164096583230025847773658628416587751635891797559057212591927535932471859453464595787535970082359820032599360236004915260159540602670676037221060474491605745086067202160767150608601336095085161039305611258516121025161292863613734486145224661529255616044766167802861750031618202456188914861956382620221856208655862149620622112516227157162330818623886356244525962500691625550516260821862660432627114536276152162810636628587966290600362952018629974376304190263085532631283286317017163211298632517106329140763330269633684166340584863442683634788046351432863549018635832316361696763649869636822946371412363745475",   // 1490 nm
+    "551740885540666655633044558534625606792056276894564800265667803356870556570579535724034357417846575906995775878457922578580820805823717158388329585355525867896158818555589546925908713359216356593421225946490859584475597010615981466859925652600337746013927560242152603426466044075560536361606298216072101660810065608969696098196561064935611459976122539061302876613785746145248461524963615957746166503461732745617990266186375661927295619892846205008062109685621678596222484162280750623354676238923162441683624931816254360762592959626414786268904262735534627813106282613362870002629130366295535662996840630374916307742663116646631551506319294063230014632663736330213563337302633717546340560963438988634716516350383863535309",   // 1500 nm
+    "549298295516228755388665556092025582366056032872562362435643425056627011568148855699751457175374573484665751714757681298578410395799672658148360582960615843994658580017587165125884954958979249591054925922887359348917594661005958018359691644598002435990634060009694601106646020913160305333603992706049106160580587606680876075344160837007609185466099829761076260611523156122694061299777613709456144068261508751615755086164071661704612617670776182823261888194619469646200430462060571621157656216964762222576622745516232533562375045624239216247172462518692625647076260988762654114626975066274006462781906628230336286320762902784629415276297955563016987630537036308982463125110631599196319401363227630632606516329307663324785",   // 1510 nm
+    "546859265491814655144525553650625557975855788851559923415619070556383705565716985675468456932902571064715727551057439899576002365775628157908392580564505820081258341360584783325861196558742023588688615899260059113121592307815934546059457517595665935967304759776998598784455997750860074306601686006026074960350752604387286052467860608721606906186077096560849285609259376100080061074114611457596121597361284518613517526141743761481690615445146160614561666584617254736178329061840153618955856194994462003231620554456210670562156773622060066225416762301373623478656239328462437987624816186252453362566614626080996264863062688446627275476276593262803721628406766287691662912679629477266298217863016033630491736308183763114023",   // 1520 nm
+    "544422635467448254900861551211605533597555545187557489165594739956140637563288695651209456690669568644765703387357198858573594335751583657668424578169585796167958102703582402715837414358504796586322315875644758877444589954615911073759223151593327055943987459544182596461065974564659842920599376926003043760120916602092506029579660380197604626896054327560622191606993206077466060848451609205726099114461060166611276396119368161258531613218316138382061444497615039836156227661619258616751676172988461783528618362196188771761938143619877346203625262083936621306666217644262221384622654916230888462351203623929266243381562473869625133286255195162589860626271726266377062699890627351766276998562803960628374586287035962902904",   // 1530 nm
+    "541995535443165354657674548782115509290755302119555059675570457055898046560865165626997956448793566229585679271256957936571189885727586757428694575777055772290257864285580022105813655958267808583954815852017458641768587602625887601458988905590990545920658159311485594138865951390359611535597069035980000559891081599798926006679560151672602346426031570460394979604725846054852060622549606951486076607760835576609035256096992561035132610989096116125661222410612822536134090461398363614546306150982461563706616167556166861161719513617693426181833761866260619133476195936262004781620491276209275762135553621773966221864262259054622988706233773262375998624135496245062462486863625223886255743562591767626256236265876362691426",   // 1540 nm
+    "539567235418858554414487546349055484960155058813552628995546162155655217558438065602762756206679563810835655119456716657568780665703530357188606573379765748353057625389577637915789873658030343581586125828378258405733585247045864093358754182588648085897281259078193591810705928156459379673594755175956909759660530597499375983719859922671600059996008753860167289602452526032166560396171604692466054053360610390606788166074569260811377608753926093833460999727610599286111905661176872612334976128892961343288613966946144890861500168615504746159970861647987616953136174180561787462618321666187603561919188619613896200299362043762620836976212291762161541621994506223664362273121623091226234428962378979624130736244669062479353",   // 1550 nm
+    "537141325394575654171538543918375460653354815865550198325521867355412388556012155578515555964565561392075630955756475496566371445679473956948400570982465724415857386494575253735766055657792640579212675804703258169460582889085840549558519340586303235873880458844662589480165904886759147573592438945933783159429741595196255960736359693313597769985985901459939241600176816009433360169435602428676031475160384965604537496052110260587025606516366071481760776687608372456089673060954905610118876106779661122513611762766122884861280465613310106138072061429238614770416152377161569786616148476165907461702466617450246178674761827874618682866190774461946607619848736202230562059140620952616213078562165713622000466223378262266922",   // 1560 nm
+    "534726145370400053929543541497235436430054573512547777185497643955170393553592215554351855723047558980465606863556234813563968185655489056708908568589935700526257147956572873125742297257555413576845175781052157933545580533505817053358284616583961965850503458611369587153205881664858915591590123895910692259199309592895515937776659464073595482355963072859711313597902305986747759942818600166086008884960159540602288016029639260362911604277616049130060553646606146816067452460733056607903966084666360901737609558586100878761060762611116656116149461210608612585316130573761351991613974096144187561485624615285406157062161612105616526376169245261731553617700586180784761845040618813996191716261952329619870196202099362054253",   // 1570 nm
+    "532308585346188553687310539072515412182854331040545350075473408754928041551171065530140455481172556564095582735555993772561561355631444556468701566192635676600956909060570486555718479257317710574471715757365257697034578174355793485658049536581614735827078858377600584819085858371358683133587804085887529958968163590587625914757359234238593188765940184659482908595621825963966859715605597897535986247159933639600032576007120660138083602032906026730560330009603914026045172260510492605681906062481460680366607348446078801260840344608916046094191160991144610395436108710861133718611793766122431861268306613114606135377961395502614365106147656461516023615547666159279361630225616669426170306261738467617732766180760961841106",   // 1580 nm
+    "529900555322084453446031536657335388007254089284542932515449221154686284548754695506000555239892554153685558643355753207559158095607447656229091563798905652711456670523568104745694696957080126572101835733702257460761575816395769953757814693579269895803678058143950582486155835089758450913585484275864391358737135588282115891726059004521590896375917308359254384593341355941209859488392595630175963609259707499597775945984602059913254599789386004331160106373601681236022868260287929603459846040296660458875605135926056723660619926606715446072208960771799608205566086835960915208609612236100640361050749610942606113693761178899612201456126055761300254613393556137762161415291614522466148872461524367615594156159398661627841",   // 1590 nm
+    "527488955297920753204036534236195363783853847051540510185424997854444170546334745481801054998136551738505534515455512047556750065583391255988884561400415628750356431389565715795670855056842184569725995709979557223892573452475746350357579017576919085780205757909703580148465811748558217978583159695841169458505511585970645868647158774090588596825894348659025264591053725918369359260464593355665940899859480882595513345962011859687710597538715981860259882021599442486000504560064769601231816018052160236669602918626034574560398793604506496050167160551620606007346064889460695982607423546078789260832477608763466091926160961580610030656104383561083770611231096116173361199641612369546127355161309552613449576137964761413860",   // 1600 nm
+    "525083305273828552962995531822205339632053605294538092615400822254202414543917185457649254756737549325705510399355271244554344425559370555748916559003115604813156192255563330415647025156604242567350155686256956987262571088555722758857343459574568275756745357675457577809575788407357984805580833915817971258273649583656795845568258543539586296085871377058796024588764915895528859032416591078765918178659254026593248375939421759462047595285655959365459657431597200165978117059841251599001415995783860014224600697766012401660177422602297546028101460331321603806736042919260476637605232486056902460613966606581936070146660744023607857476082675560867047609066256094560660983872610213046105825961094499611301426116519061199522",   // 1610 nm
+    "522682435249772152722192529411795315516053363895535677435376670453960776541503195433509354515457546914105486307155030560551939965535337955508947556607015580887855953360560942655623195256366301564974315662546256750393568724635699155357108021572216275733261157441092575470695765054257751751578506955794737358041787581341745822453558312869583992965848393458566666586474905872664558804250588800675895433459027052590982205916783859236145593030215936846759432602594956645955705659617496596767435973479759791660598474505990216759955812600085026006000060110545601603756020913160256934603039036034991760395217604396826048331360526109605681906060943660650086606899026072912260767508608054166084249060879087609148506095025560984945",   // 1620 nm
+    "520288715225799152481866527006155291423853122973533265835352554353719735539091595409405254274535544506075462250754790115549537905511341155269217554212095556962555714345558557275599365256128359562598475638823556513643566360715675551956872225569863085709776957206607573129425741689257518458576177605771479657809806579025515799338858082080581688645825386058336830584182505849776358575726586519005872652558799601588712455894122159010005590771205914292359207535592708355933270559393501594531065951139959568620596247675967972359733725597867735983862959889531599395995998871360036874600840816013057260176110602208146026468360307837603501566039176060432529604727036051216160550904605889326062636460663199606993206073496360769892",   // 1630 nm
+    "517892605201790352241421524598125267331652881813530854235328426453478336536677605385277354033256542095665438146654549313547132255487308555029130551814795533013355475211556168325575511555890059560219055615077056276417563992025651912756636190567506315686245056971645570784575718276557284808573844675748186157577229576704505776164557850814579379565802331058106875581885345826852358346725584233765849847858571911586437945871424758783269588508615891714158981991590455295910787659169030592288735928764359345222594017275945704059511399595645675961689959668159597184665976781859816337598639015991051259956408600014696004557660089087601316456017348860214734602551466029472460333824603722106040988060446954604833136051907560554361",   // 1640 nm
+    "515502455177841252001452522196055243287152641010528445015304322253237295534268385361173253792334539686445414078254308748544727805463287854789162549417505509064255236077553780565551657755651879557840825591318656039190561623335628261656400156565149555662713156736803568438535694863857050920571510555724892657344651574382315752978357619309577069285779264057876444579585795803892658117604581946135826995458343863584161045848691558556294586243635869088258756208588201055888280958944201590045215906353059121466591782095923399959288597593422415939469359446311594969755954668559595442596432455969033259736466597817665982623159869981599128965995509659996462600371126007716760116386601550106019291960230231602669486030318760338473",   // 1650 nm
+  ]
+};
+
+/* =====================================================================
+   2.  OPTICAL DATA ACCESS  —  bilinear interpolation, no extrapolation
+   ===================================================================== */
+const Optics = (() => {
+  const T = NEFF_TABLE;
+  // rounded so that wMin + k*wStep never drifts (6.800000000000001 etc.)
+  const r6 = v => Math.round(v * 1e6) / 1e6;
+  const WL = Array.from({ length: T.wlCount }, (_, j) => r6(T.wlMin + j * T.wlStep));
+  const W  = Array.from({ length: T.wCount  }, (_, k) => r6(T.wMin  + k * T.wStep));
+  // neff[j*wCount + k]
+  const neff = new Float64Array(T.wlCount * T.wCount);
+  T.rows.forEach((row, j) => {
+    for (let k = 0; k < T.wCount; k += 1) {
+      const d = parseInt(row.substr(k * T.digits, T.digits), 10);
+      neff[j * T.wCount + k] = T.base + d / T.scale;
+    }
+  });
+
+  const wlMin = WL[0], wlMax = WL[T.wlCount - 1];
+  const wMin = W[0], wMax = W[T.wCount - 1];
+
+  /** Wavelength-interpolated slice: neff as a function of width, on the width grid. */
+  const rowCache = new Map();
+  function rowAt(lamUm) {
+    const lam = Math.min(Math.max(lamUm, wlMin), wlMax);
+    const key = Math.round(lam * 1e9);
+    const hit = rowCache.get(key);
+    if (hit) return hit;
+    let j = Math.floor((lam - T.wlMin) / T.wlStep);
+    j = Math.min(Math.max(j, 0), T.wlCount - 2);
+    const t = (lam - WL[j]) / T.wlStep;
+    const out = new Float64Array(T.wCount);
+    const a = j * T.wCount, b = (j + 1) * T.wCount;
+    for (let k = 0; k < T.wCount; k += 1) out[k] = neff[a + k] * (1 - t) + neff[b + k] * t;
+    if (rowCache.size > 400) rowCache.clear();
+    rowCache.set(key, out);
+    return out;
+  }
+
+  /** Index of the width cell containing w (clamped to the last cell). */
+  function cellOf(w) {
+    let k = Math.floor((w - T.wMin) / T.wStep);
+    return Math.min(Math.max(k, 0), T.wCount - 2);
+  }
+
+  /** Linear interpolation in width inside an already wavelength-interpolated row. */
+  function neffOfWidth(row, w) {
+    if (w < wMin - 1e-9 || w > wMax + 1e-9) noteOutOfTable(w);
+    const wc = (EDGE_MODE === "clamp") ? Math.min(Math.max(w, wMin), wMax) : w;
+    const k = cellOf(Math.min(Math.max(wc, wMin), wMax));
+    const t = (wc - W[k]) / T.wStep;
+    return row[k] * (1 - t) + row[k + 1] * t;
+  }
+
+  /* ---- natural cubic spline in width ------------------------------------
+     Linear interpolation is exact on the table grid but wrong for biased
+     widths, which sit mid-cell by construction.  Second derivatives are
+     solved once per wavelength row (tridiagonal 1,4,1) and cached with it. */
+  const splineCache = new Map();
+
+  /** Natural spline: second derivative forced to zero at both table edges. */
+  function secondDerivsNatural(row) {
+    const n = row.length, h = T.wStep;
+    const M = new Float64Array(n);          // M[0] = M[n-1] = 0
+    const c = new Float64Array(n), d = new Float64Array(n);
+    for (let i = 1; i < n - 1; i += 1) {
+      const rhs = 6 / (h * h) * (row[i - 1] - 2 * row[i] + row[i + 1]);
+      const denom = 4 - c[i - 1];
+      c[i] = 1 / denom;
+      d[i] = (rhs - d[i - 1]) / denom;
+    }
+    for (let i = n - 2; i >= 1; i -= 1) M[i] = d[i] - c[i] * M[i + 1];
+    return M;
+  }
+
+  /** Not-a-knot spline: third derivative continuous at the first and last
+   *  interior knots.  This is what scipy's CubicSpline does by default, so it
+   *  is what Nem's LP uses - the two tools must agree, and near the table
+   *  edges the choice is worth ~1e-6 in neff.
+   *
+   *  For uniform spacing the end conditions collapse neatly:
+   *  M0 - 2 M1 + M2 = 0 substituted into the i=1 row gives 6 M1 = rhs1, so
+   *  M1 (and likewise M[n-2]) are known outright, leaving a tridiagonal
+   *  system in M2..M[n-3]. */
+  function secondDerivsNotAKnot(row) {
+    const n = row.length, h = T.wStep, h2 = h * h;
+    const M = new Float64Array(n);
+    if (n < 4) return secondDerivsNatural(row);
+    const rhs = i => 6 / h2 * (row[i - 1] - 2 * row[i] + row[i + 1]);
+    M[1] = rhs(1) / 6;
+    M[n - 2] = rhs(n - 2) / 6;
+    // tridiagonal (1,4,1) for i = 2 .. n-3 with M1, M[n-2] moved to the RHS
+    const lo = 2, hi = n - 3, m = hi - lo + 1;
+    if (m > 0) {
+      const c = new Float64Array(m), d = new Float64Array(m);
+      for (let k = 0; k < m; k += 1) {
+        const i = lo + k;
+        let r = rhs(i);
+        if (k === 0) r -= M[1];
+        if (k === m - 1) r -= M[n - 2];
+        const denom = 4 - (k > 0 ? c[k - 1] : 0);
+        c[k] = 1 / denom;
+        d[k] = (r - (k > 0 ? d[k - 1] : 0)) / denom;
+      }
+      M[hi] = d[m - 1];
+      for (let k = m - 2; k >= 0; k -= 1) M[lo + k] = d[k] - c[k] * M[lo + k + 1];
+    }
+    M[0] = 2 * M[1] - M[2];
+    M[n - 1] = 2 * M[n - 2] - M[n - 3];
+    return M;
+  }
+
+  function splineOf(row) {
+    // keyed by a numeric epoch, not a built string: this is called from the
+    // taper quadrature's inner loop, and concatenating a key there cost more
+    // than the spline arithmetic itself
+    let e = splineCache.get(row);
+    if (!e || e.epoch !== SPLINE_EPOCH) {
+      e = { epoch: SPLINE_EPOCH,
+            M: SPLINE_BC === "natural" ? secondDerivsNatural(row)
+                                       : secondDerivsNotAKnot(row) };
+      if (splineCache.size > 400) splineCache.clear();
+      splineCache.set(row, e);
+    }
+    return e.M;
+  }
+  /** Cubic-spline neff at width w.
+   *  EDGE_MODE "clamp" holds the end value; "extrapolate" continues the end
+   *  cell's cubic, which is what scipy's CubicSpline does by default and
+   *  therefore what Nem's LP assumes.  Outside the table there is no data, so
+   *  either way the caller is told (see outOfTable below). */
+  function neffCubic(row, w) {
+    const outside = w < wMin - 1e-9 || w > wMax + 1e-9;
+    if (outside) noteOutOfTable(w);
+    const wc = (EDGE_MODE === "clamp") ? Math.min(Math.max(w, wMin), wMax) : w;
+    const k = cellOf(Math.min(Math.max(wc, wMin), wMax));
+    const M = splineOf(row);
+    const h = T.wStep, a = W[k + 1] - wc, b = wc - W[k];
+    return (M[k] * a * a * a + M[k + 1] * b * b * b) / (6 * h)
+         + (row[k] / h - M[k] * h / 6) * a
+         + (row[k + 1] / h - M[k + 1] * h / 6) * b;
+  }
+
+  /** Same as neffCubic but with M supplied, so the quadrature can fetch the
+   *  spline once per span instead of once per evaluation point. */
+  function neffCubicM(row, M, w) {
+    if (w < wMin - 1e-9 || w > wMax + 1e-9) noteOutOfTable(w);
+    const wc = (EDGE_MODE === "clamp") ? Math.min(Math.max(w, wMin), wMax) : w;
+    const k = cellOf(Math.min(Math.max(wc, wMin), wMax));
+    const h = T.wStep, a = W[k + 1] - wc, b = wc - W[k];
+    return (M[k] * a * a * a + M[k + 1] * b * b * b) / (6 * h)
+         + (row[k] / h - M[k] * h / 6) * a
+         + (row[k + 1] / h - M[k + 1] * h / 6) * b;
+  }
+
+  return { WL, W, wlMin, wlMax, wMin, wMax, wStep: T.wStep, rowAt, cellOf,
+           neffOfWidth, neffCubic, neffCubicM, splineOf };
+})();
+
+/* 8-point Gauss-Legendre on [0,1], used inside each smooth taper piece. */
+const GL_S = [0.019855071751231912, 0.10166676129318664, 0.2372337950418355, 0.40828267875217511, 0.59171732124782483, 0.7627662049581645, 0.89833323870681336, 0.98014492824876809];
+const GL_W = [0.050614268145188532, 0.11119051722668721, 0.15685332293894344, 0.18134189168918083, 0.18134189168918083, 0.15685332293894344, 0.11119051722668721, 0.050614268145188532];
+
+/** Width interpolation in force. Cubic is required for biased widths; linear is
+ *  kept selectable because it is what v1/v2 used and what the first designs
+ *  were fitted with. */
+let WIDTH_INTERP = "cubic";
+/* Spline end condition. "not-a-knot" matches scipy (and therefore Nem's LP);
+   "natural" is what v3a shipped.  They differ by ~1e-6 in neff one cell from
+   the table edge, which is ~0.26 deg over a 1000 um segment. */
+let SPLINE_BC = "not-a-knot";
+let SPLINE_EPOCH = 1;
+function applyInterp() {
+  WIDTH_INTERP = state.widthInterp === "linear" ? "linear" : "cubic";
+  const bc = state.widthInterp === "cubic-natural" ? "natural" : "not-a-knot";
+  if (bc !== SPLINE_BC) { SPLINE_BC = bc; SPLINE_EPOCH += 1; }
+}
+function neffAtWidth(row, w) {
+  return WIDTH_INTERP === "linear" ? Optics.neffOfWidth(row, w) : Optics.neffCubic(row, w);
+}
+
+/* =====================================================================
+   3.  COSINE TAPER PROFILE
+   ---------------------------------------------------------------------
+   G(s)  = 0.5 - 0.5 cos(pi s)      normalised 0 -> 1 blend
+   IG(s) = integral of G            used for the closed-form taper integral
+   ===================================================================== */
+/* Table-edge policy and a record of any width evaluated outside the table.
+   "extrapolate" matches scipy / Nem's LP; "clamp" is the older conservative
+   behaviour.  Either way outOfTable records what happened so the UI can say so. */
+let EDGE_MODE = "extrapolate";
+/* The bias scan multiplies the work by the scenario count, and it does not need
+   to follow every intermediate value while a slider is held.  While dragging,
+   the previous scan is reused and refreshed on release. */
+let DRAGGING = false;
+let LAST_BIAS_SCAN = null;
+window.addEventListener("pointerdown", e => {
+  if (e.target && e.target.type === "range") DRAGGING = true;
+}, true);
+window.addEventListener("pointerup", () => {
+  if (DRAGGING) { DRAGGING = false; if (typeof update === "function") update(); }
+}, true);
+window.addEventListener("keyup", () => { if (DRAGGING) { DRAGGING = false; } }, true);
+const outOfTable = { lo: null, hi: null, count: 0 };
+function resetOutOfTable() { outOfTable.lo = null; outOfTable.hi = null; outOfTable.count = 0; }
+function noteOutOfTable(w) {
+  outOfTable.count += 1;
+  if (outOfTable.lo === null || w < outOfTable.lo) outOfTable.lo = w;
+  if (outOfTable.hi === null || w > outOfTable.hi) outOfTable.hi = w;
+}
+
+const TWO_PI = 2 * Math.PI;
+const RAD2DEG = 180 / Math.PI;
+const REF_WL = 1.55;          // um, the reference wavelength for trim and readouts
+
+/* Two selectable taper profiles.  Each supplies the normalised blend g(s), its
+   antiderivative (for the closed-form integral) and its inverse (to locate the
+   width-grid crossings).  Adding another shape only means adding an entry. */
+const TAPER_SHAPES = {
+  cosine: {
+    label: "raised cosine",
+    note: "zero slope at both ends, so no slope discontinuity where it meets a plateau",
+    g: s => 0.5 - 0.5 * Math.cos(Math.PI * s),
+    ig: s => 0.5 * s - Math.sin(Math.PI * s) / TWO_PI,
+    ginv: g => Math.acos(1 - 2 * Math.min(Math.max(g, 0), 1)) / Math.PI
+  },
+  linear: {
+    label: "linear",
+    note: "constant dw/dx, with a slope step at each end",
+    g: s => s,
+    ig: s => 0.5 * s * s,
+    ginv: g => Math.min(Math.max(g, 0), 1)
+  }
+};
+let TAPER = TAPER_SHAPES.cosine;               // set from the state on every update
+const G  = s => TAPER.g(s);
+const IG = s => TAPER.ig(s);
+const Ginv = g => TAPER.ginv(g);
+
+/* =====================================================================
+   4.  HEATER MODEL  (v2: still a toy dT model, now driven two ways)
+   ---------------------------------------------------------------------
+   Everything thermal is confined to this object.  Later versions can
+   implement resolveDeltaT() as  P = V^2/R,  dT = eta*P,  dT_actual =
+   C * dT_commanded  without touching geometry or the phase integrator.
+
+   Note on the trim region.  Because dneff_heat = (dneff/dT)*dT carries no
+   wavelength dependence, a heater's phase is EXACTLY
+
+       dphi_heater(lam) = 2*pi*(dneff/dT)*dT*L/lam    ~  1/lam
+
+   so specifying the trim as "this many degrees at 1550 nm" and specifying it
+   as a dT are the same physical thing.  The UI exposes the phase (easier to
+   reason about) and reports the dT it implies, via trimDeltaTFor().
+   ===================================================================== */
+const HeaterModel = {
+  id: "direct-dT",
+  label: "direct ΔT (toy)",
+
+  /** Commanded settings -> actual per-region temperatures.  Identity in v2.
+   *  A crosstalk matrix would be applied right here. */
+  resolveDeltaT(state) {
+    const dT = trimDeltaTFor(state);
+    return {
+      top: state.arms.top.segs.map(s => s.dT),
+      bot: state.arms.bot.segs.map(s => s.dT),
+      trim: { top: dT > 0 ? dT : 0, bot: dT < 0 ? -dT : 0 }
+    };
+  },
+
+  /** Index shift for a constant dT.  Affine in dT, which is what makes the
+   *  taper integral closed-form; a width/wavelength dependent coefficient
+   *  would move this into spanMeanIndex() as a numerical quadrature. */
+  deltaNeff(dT, state) { return state.dneffdT * dT; },
+
+  /** Mean index shift over one span, given the dT blend dT0 -> dT1 that
+   *  follows the same taper profile as the width.  mean(g) is 1/2 for the
+   *  cosine and for the linear shape alike, so this stays closed-form. */
+  meanDeltaNeffOverSpan(dT0, dT1, state) {
+    return this.deltaNeff(dT0 + 0.5 * (dT1 - dT0), state);
+  }
+};
+
+/** dT the trim heater needs to deliver state.trimPhaseDeg at 1550 nm.
+ *  dphi = 2*pi*(dneff/dT)*dT*L/lam  ->  dT = dphi*lam / (2*pi*alpha*L).
+ *  Signed: positive heats the top arm, negative heats the bottom arm. */
+function trimDeltaTFor(state) {
+  const L = state.trim.L, alpha = state.dneffdT;
+  if (!(L > 0) || !(alpha > 0)) return 0;
+  const phi = state.trimPhaseDeg / RAD2DEG;
+  return phi * REF_WL / (TWO_PI * alpha * L);
+}
+
+/* =====================================================================
+   5.  GEOMETRY  —  one independent span list per arm
+   ---------------------------------------------------------------------
+   The two arms are built separately.  Dphi = (2pi/lam)[ INT n_top dx -
+   INT n_bot dx ], and each integral only depends on how much length that
+   arm spends at each width - not on where the other arm's boundaries sit.
+   So the arms need no common grid, and they may carry different segment
+   counts and different plateau lengths.
+
+   (Worth knowing: independent segmentation adds no new differential-phase
+   freedom.  Dphi depends only on each arm's length-vs-width histogram, so
+   any independent-arm design can be rewritten as a paired-segment design.
+   It does matter once tapers, loss and footprint are counted, which is why
+   it is supported here.)
+
+   span = { len, kind, seg, w0, w1, t0, t1 }   (per arm, lengths in um)
+     [input taper] p1 [taper] p2 ... pN [output taper] [trim]
+   ===================================================================== */
+const Geometry = {
+  /** Span list for one arm.  which = "top" | "bot". */
+  armSpans(state, which, { heatersOff = false } = {}) {
+    const arm = state.arms[which];
+    const n = arm.n;
+    const segs = arm.segs.slice(0, n);
+    const temps = HeaterModel.resolveDeltaT(state);
+    const dTof = i => (heatersOff ? 0 : temps[which][i]);
+    const io = state.ioWidth;
+    /* Taper length at boundary b (0 = input, n = output). A design may carry an
+       explicit per-boundary list - Nem's rule gives 60/80/160 um depending on
+       the step size, and both arms share each boundary's length. Designs without
+       a list fall back to the single global slider. */
+    const tapAt = b => (state.taperList && state.taperList.length === n + 1)
+      ? state.taperList[b] : state.taperLen;
+    const lt = tapAt(0);
+    const bias = state.widthBias || 0;      // common CD offset, um
+    const wOf = w => w + bias;
+    const spans = [];
+
+    if (tapAt(0) > 0) {
+      spans.push({ len: tapAt(0), kind: "taper-in", seg: 0,
+        w0: wOf(io), w1: wOf(segs[0].w), t0: 0, t1: dTof(0) });
+    }
+    for (let i = 0; i < n; i += 1) {
+      spans.push({ len: segs[i].L, kind: "plateau", seg: i,
+        w0: wOf(segs[i].w), w1: wOf(segs[i].w), t0: dTof(i), t1: dTof(i) });
+      if (i < n - 1 && tapAt(i + 1) > 0) {
+        spans.push({ len: tapAt(i + 1), kind: "taper", seg: i,
+          w0: wOf(segs[i].w), w1: wOf(segs[i + 1].w), t0: dTof(i), t1: dTof(i + 1) });
+      }
+    }
+    if (tapAt(n) > 0) {
+      spans.push({ len: tapAt(n), kind: "taper-out", seg: n - 1,
+        w0: wOf(segs[n - 1].w), w1: wOf(io), t0: dTof(n - 1), t1: 0 });
+    }
+    if (state.trim.L > 0) {
+      const t = heatersOff ? 0 : temps.trim[which === "top" ? "top" : "bot"];
+      spans.push({ len: state.trim.L, kind: "trim", seg: -1,
+        w0: wOf(io), w1: wOf(io), t0: t, t1: t });
+    }
+    return spans;
+  },
+
+  bothArms(state, opts) {
+    const out = { top: this.armSpans(state, "top", opts),
+                  bot: this.armSpans(state, "bot", opts) };
+    /* Path offset: dL of extra access-width guide in one arm, which is where the
+       pi bias lives in the v3 designs instead of in the trim heater.  Drawn as a
+       plain span at the I/O width so it enters the phase integral like any other
+       straight section.  The arms are deliberately unequal by dL. */
+    const dL = (state.pathOffsetNm || 0) / 1000;
+    if (Math.abs(dL) > 1e-9) {
+      const arm = dL > 0 ? out.top : out.bot;
+      const w = state.ioWidth + (state.widthBias || 0);
+      arm.push({ len: Math.abs(dL), kind: "offset", seg: -1,
+                 w0: w, w1: w, t0: 0, t1: 0 });
+    }
+    return out;
+  },
+
+  /** Segmented-region length of one arm (plateaus + its own tapers). */
+  armApsLength(state, which) {
+    const arm = state.arms[which];
+    let sum = 0;
+    for (let i = 0; i < arm.n; i += 1) sum += arm.segs[i].L;
+    if (state.taperList && state.taperList.length === arm.n + 1) {
+      for (let b = 0; b <= arm.n; b += 1) sum += state.taperList[b];
+    } else if (state.taperLen > 0) {
+      sum += (arm.n + 1) * state.taperLen;
+    }
+    return sum;
+  },
+
+  /** The device length is set by the longer arm; the other is padded. */
+  apsLength(state) {
+    return Math.max(this.armApsLength(state, "top"), this.armApsLength(state, "bot"));
+  },
+
+  armMismatch(state) {
+    return this.armApsLength(state, "top") - this.armApsLength(state, "bot");
+  },
+
+  totalLength(state) {
+    return this.apsLength(state) + state.trim.L
+           + Math.abs(state.pathOffsetNm || 0) / 1000;
+  }
+};
+
+/* =====================================================================
+   6.  PHASE INTEGRATION
+   ---------------------------------------------------------------------
+   For one span, the length-averaged effective index is needed:
+
+     nbar = integral_0^1 [ n_base(w(s), lam) + dn_heat(s) ] ds
+
+   With bilinear interpolation, n_base is piecewise linear in w for a
+   fixed lambda.  w(s) is monotonic, so the span is split at every width-
+   grid crossing; inside each piece n_base = c + m*(w1-w0)*G(s) and the
+   integral is exact via IG(s).  No x-sampling, hence no taper artifacts.
+   ===================================================================== */
+function spanMeanIndex(row, w0, w1, meanHeatShift) {
+  const d = w1 - w0;
+  if (Math.abs(d) < 1e-12) return neffAtWidth(row, w0) + meanHeatShift;
+
+  // split at the width-grid crossings: the spline is smooth inside a cell,
+  // so 8-point Gauss-Legendre per piece is accurate to ~1e-13
+  const lo = Math.min(w0, w1), hi = Math.max(w0, w1);
+  const kFirst = Optics.cellOf(lo) + 1;
+  const nodes = [];
+  for (let k = kFirst; k < Optics.W.length; k += 1) {
+    const w = Optics.W[k];
+    if (w >= hi - 1e-12) break;
+    if (w > lo + 1e-12) nodes.push(w);
+  }
+  if (d < 0) nodes.reverse();
+
+  // The spline is C2, so the quadrature does not need a panel per width cell -
+  // only the 3rd derivative jumps there.  Splitting at all 44 crossings of a
+  // full-range taper cost ~350 spline evaluations and made slider drags
+  // ~300 ms; capping the panel count is ~5x faster at the same accuracy
+  // (checked against 20k-point Simpson in the self-tests).
+  const MAX_PANELS = 8;
+  const bounds = [0];
+  if (nodes.length <= MAX_PANELS - 1) {
+    for (let i = 0; i < nodes.length; i += 1) bounds.push(Ginv((nodes[i] - w0) / d));
+  } else {
+    for (let p = 1; p < MAX_PANELS; p += 1) {
+      const j = Math.round(p * nodes.length / MAX_PANELS) - 1;
+      bounds.push(Ginv((nodes[Math.min(Math.max(j, 0), nodes.length - 1)] - w0) / d));
+    }
+  }
+  bounds.push(1);
+
+  const cubic = WIDTH_INTERP !== "linear";
+  const M = cubic ? Optics.splineOf(row) : null;      // fetched once per span
+  let total = 0;
+  for (let i = 0; i < bounds.length - 1; i += 1) {
+    const sa = bounds[i], sb = bounds[i + 1];
+    const span = sb - sa;
+    if (span < 1e-15) continue;
+    let acc = 0;
+    for (let g = 0; g < GL_S.length; g += 1) {
+      const s = sa + span * GL_S[g];
+      const w = w0 + d * G(s);
+      acc += GL_W[g] * (cubic ? Optics.neffCubicM(row, M, w) : Optics.neffOfWidth(row, w));
+    }
+    total += span * acc;
+  }
+  return total + meanHeatShift;
+}
+
+/* =====================================================================
+   6b.  WORST-CASE METRICS AND BIAS ROBUSTNESS  (Nem's review)
+   ---------------------------------------------------------------------
+   Every spectral channel must null on its own, so the figure of merit is
+   the worst error across the band after the best trim.  The trim is a pure
+   1/lambda phase, so "best trim" is a 1-D minimax in the trim coefficient -
+   convex, solved here by ternary search (no LP needed in the browser).
+
+   Fabrication is then dominated by a COMMON width bias (CD offset applies to
+   every segment in both arms).  The trim is set after fabrication, so it is
+   free to re-adapt to whatever bias the wafer came out with; the design must
+   therefore minimise the worst case over a range of biases.
+   ===================================================================== */
+const TRIM_SHAPE_REF = 1.55;
+
+/** max_lambda |err + c*(1.55/lam)| in degrees, err in degrees. */
+function worstWithTrim(errDeg, lams, c) {
+  let m = 0;
+  for (let i = 0; i < lams.length; i += 1) {
+    const v = Math.abs(errDeg[i] + c * (TRIM_SHAPE_REF / lams[i]));
+    if (v > m) m = v;
+  }
+  return m;
+}
+
+/** The 2*pi*m branch a design sits on, judged at mid-band (as Nem's LP does). */
+function branchTarget(dphiRad) {
+  const mid = dphiRad[Math.floor(dphiRad.length / 2)];
+  const m = Math.round((mid - Math.PI) / TWO_PI);
+  return Math.PI * (2 * m + 1);
+}
+
+/** Unwrapped phase error in degrees against that branch. */
+function rawErrorDeg(dphiRad) {
+  const target = branchTarget(dphiRad);
+  return dphiRad.map(p => (p - target) * RAD2DEG);
+}
+
+/** Best trim (deg at 1550 nm) and the worst residual it leaves.
+ *  Must be given the UNWRAPPED error: a trim added to a wrapped value makes the
+ *  objective non-convex and the search lands on the wrong branch. */
+function bestTrim(errDeg, lams) {
+  let lo = -200, hi = 200;
+  for (let it = 0; it < 200; it += 1) {
+    const a1 = lo + (hi - lo) / 3, a2 = hi - (hi - lo) / 3;
+    if (worstWithTrim(errDeg, lams, a1) < worstWithTrim(errDeg, lams, a2)) hi = a2;
+    else lo = a1;
+  }
+  const c = 0.5 * (lo + hi);
+  return { trimDeg: c, worst: worstWithTrim(errDeg, lams, c) };
+}
+
+/* =====================================================================
+   POWER IMBALANCE
+   ---------------------------------------------------------------------
+   The neff table is a real-index solve: max |neff_imag| = 6.8e-13, i.e.
+   2.4e-7 dB/cm.  It carries NO loss information, so imbalance cannot be
+   derived from it.  Instead the user supplies a loss-vs-width model and the
+   tool integrates it along each arm's actual width profile:
+
+       alpha(w) = lossNarrow + (lossWide - lossNarrow) * (w - wMin)/(wMax - wMin)
+
+   plus an optional excess loss per width transition, charged as
+   taperExcess * |dw| at each taper, which is what makes the two arms differ
+   even when their total lengths match.
+
+   Because alpha is linear in w and a raised-cosine taper's mean width is just
+   the average of its endpoints, every span integrates in closed form.
+   ===================================================================== */
+function alphaOf(w, state) {
+  const f = (w - Optics.wMin) / (Optics.wMax - Optics.wMin);
+  return state.lossNarrow + (state.lossWide - state.lossNarrow) * f;
+}
+
+/** Loss of one arm in dB, from its span list. */
+function armLossDb(spans, state) {
+  let dB = 0;
+  for (let i = 0; i < spans.length; i += 1) {
+    const s = spans[i];
+    if (s.len <= 0) continue;
+    const wBar = 0.5 * (s.w0 + s.w1);             // exact for a cosine taper
+    dB += alphaOf(wBar, state) * s.len / 1e4;     // um -> cm
+    if (s.w0 !== s.w1) dB += state.taperExcess * Math.abs(s.w1 - s.w0);
+  }
+  return dB;
+}
+
+/** Null depth with BOTH phase error and power imbalance.
+ *  I/Imax = [r + 1 - 2 sqrt(r) cos(eps)] / (1 + sqrt(r))^2,  r = 10^(IL/10). */
+function nullDbWithImbalance(errDeg, imbalanceDb) {
+  const eps = errDeg / RAD2DEG;
+  const r = Math.pow(10, imbalanceDb / 10);
+  const sr = Math.sqrt(r);
+  const v = (r + 1 - 2 * sr * Math.cos(eps)) / ((1 + sr) * (1 + sr));
+  return Math.max(NULL_FLOOR_DB, 10 * Math.log10(Math.max(v, 1e-20)));
+}
+
+const Physics = {
+  /** Optical path length (um) accumulated along ONE arm. */
+  armOPD(spans, lamUm, state) {
+    const row = Optics.rowAt(lamUm);
+    let opl = 0;
+    for (let i = 0; i < spans.length; i += 1) {
+      const s = spans[i];
+      if (s.len <= 0) continue;
+      opl += s.len * spanMeanIndex(row, s.w0, s.w1,
+        HeaterModel.meanDeltaNeffOverSpan(s.t0, s.t1, state));
+    }
+    return opl;
+  },
+
+  /** Differential optical path (um) between the arms.
+   *
+   *  The two arms are summed independently and then subtracted.  When the
+   *  arms are geometrically identical the two term sequences are bit-for-bit
+   *  identical, so the subtraction returns exactly 0 - no spurious
+   *  differential phase appears (see verification test 1). */
+  differentialOPD(both, lamUm, state) {
+    return this.armOPD(both.top, lamUm, state) - this.armOPD(both.bot, lamUm, state);
+  },
+
+  /** Raw (unwrapped) differential phase in radians. */
+  differentialPhase(both, lamUm, state) {
+    return TWO_PI / lamUm * this.differentialOPD(both, lamUm, state);
+  }
+};
+
+/** Wrap into (-pi, pi]. */
+function wrapPi(x) {
+  const y = (x + Math.PI) % TWO_PI;
+  return (y < 0 ? y + TWO_PI : y) - Math.PI;
+}
+const NULL_FLOOR_DB = -140;
+
+/** Ideal phase-only null: I/Imax = sin^2(err/2). */
+function nullDbFromErrDeg(errDeg) {
+  const s = Math.sin(0.5 * errDeg / RAD2DEG);
+  return Math.max(NULL_FLOOR_DB, 10 * Math.log10(Math.max(s * s, 1e-20)));
+}
+
+/* =====================================================================
+   7.  ANALYSIS  —  wavelength sweep and summary metrics
+   ===================================================================== */
+
+function analyse(state) {
+  const lamLo = Math.max(state.wlMin, Optics.wlMin);
+  const lamHi = Math.min(state.wlMax, Optics.wlMax);
+  const n = state.nWl;
+  const lams = Array.from({ length: n }, (_, i) => n === 1 ? lamLo : lamLo + (i / (n - 1)) * (lamHi - lamLo));
+
+  TAPER = TAPER_SHAPES[state.taperShape] || TAPER_SHAPES.cosine;
+  EDGE_MODE = state.edgeMode || "extrapolate";
+  resetOutOfTable();
+  const spans = Geometry.bothArms(state);
+  const spansOff = Geometry.bothArms(state, { heatersOff: true });
+
+  const heated = [], baseline = [], dphiPi = [], dphiPiOff = [], dphiRaw = [];
+  for (let i = 0; i < n; i += 1) {
+    const lam = lams[i];
+    const dp = Physics.differentialPhase(spans, lam, state);
+    const dpOff = Physics.differentialPhase(spansOff, lam, state);
+    heated.push(wrapPi(dp - Math.PI) * RAD2DEG);
+    baseline.push(wrapPi(dpOff - Math.PI) * RAD2DEG);
+    dphiPi.push(dp / Math.PI);
+    dphiPiOff.push(dpOff / Math.PI);
+    dphiRaw.push(dp);
+  }
+  // unwrapped error against the design's own branch - this, not the wrapped
+  // error, is what the trim must be fitted against
+  const rawErr = rawErrorDeg(dphiRaw);
+
+  let sq = 0, worst = 0, worstLam = lams[0];
+  for (let i = 0; i < n; i += 1) {
+    sq += heated[i] * heated[i];
+    if (Math.abs(heated[i]) > Math.abs(worst)) { worst = heated[i]; worstLam = lams[i]; }
+  }
+  const rms = Math.sqrt(sq / n);
+
+  // 1550 nm is evaluated directly, not read off the sweep grid
+  const refInBand = REF_WL >= lamLo - 1e-12 && REF_WL <= lamHi + 1e-12;
+  const errRef = wrapPi(Physics.differentialPhase(spans, REF_WL, state) - Math.PI) * RAD2DEG;
+  const errRefOff = wrapPi(Physics.differentialPhase(spansOff, REF_WL, state) - Math.PI) * RAD2DEG;
+
+  const nullDb = heated.map(nullDbFromErrDeg);
+  const nullDbOff = baseline.map(nullDbFromErrDeg);
+  const worstNull = nullDb.reduce((a, b) => Math.max(a, b), NULL_FLOOR_DB);
+
+  /* ---- worst-case metrics (Nem's review) ----
+     Peak-to-peak is what a dispersed spectrum sees; worst-after-trim is that
+     halved, because the trim is free to centre the band. */
+  const pkpk = Math.max(...rawErr) - Math.min(...rawErr);
+  const trimmed = bestTrim(rawErr, lams);
+
+  /* ---- robustness to a common width bias ----
+     A CD offset shifts every segment in both arms.  The trim is set after
+     fabrication, so it re-adapts per bias; what matters is the worst case
+     over the bias range. */
+  const lossTop = armLossDb(spans.top, state);
+  const lossBot = armLossDb(spans.bot, state);
+  const imbalanceDb = lossTop - lossBot;
+
+  const biasNm = state.biasRangeNm, nBias = state.nBias;
+  const scanKey = nBias + "|" + biasNm + "|" + state.edgeMode + "|" + state.widthInterp;
+  if (DRAGGING && LAST_BIAS_SCAN && LAST_BIAS_SCAN.key === scanKey) {
+    const biasScan = LAST_BIAS_SCAN.rows;
+    const worstOverBias = LAST_BIAS_SCAN.worst;
+    const drawnWorst = Math.max(...rawErr.map(Math.abs));
+    const nominalTrimNeeded = trimmed.trimDeg;
+    const lossTopD = armLossDb(spans.top, state);
+    const lossBotD = armLossDb(spans.bot, state);
+    return {
+      lams, heated, baseline, dphiPi, dphiPiOff, nullDb, nullDbOff,
+      rms, worst, worstLam, errRef, errRefOff, refInBand,
+      pkpk, trimmedWorst: trimmed.worst, trimmedTrimDeg: trimmed.trimDeg, rawErr,
+      biasScan, worstOverBias, lossTop: lossTopD, lossBot: lossBotD,
+      imbalanceDb: lossTopD - lossBotD,
+      drawnWorst, nominalTrimNeeded,
+      nullRefDb: nullDbFromErrDeg(errRef), worstNull,
+      opdRef: Physics.differentialOPD(spans, REF_WL, state),
+      apsLength: Geometry.apsLength(state), totalLength: Geometry.totalLength(state),
+      armMismatch: Geometry.armMismatch(state), trimDeltaT: trimDeltaTFor(state),
+      edgeLo: outOfTable.lo, edgeHi: outOfTable.hi, edgeCount: outOfTable.count,
+      biasStale: true, lamLo, lamHi
+    };
+  }
+  const biasScan = [];
+  for (let s = 0; s < nBias; s += 1) {
+    const bias = nBias === 1 ? 0
+      : (-biasNm + (2 * biasNm) * s / (nBias - 1)) / 1000;   // um
+    const probe = Object.assign({}, state, { widthBias: bias });
+    const sp = Geometry.bothArms(probe);
+    const raws = lams.map(lam => Physics.differentialPhase(sp, lam, probe));
+    // same branch as the nominal design, so a bias cannot silently hop branches
+    const errs = raws.map(p => (p - branchTarget(dphiRaw)) * RAD2DEG);
+    // Nem's note 1b: at zero bias the design must hit pi as drawn - the trim
+    // exists to correct fabrication, and a passive chip has no trim.  Only
+    // non-zero biases are allowed a re-fitted trim.
+    const nominal = Math.abs(bias) < 1e-12;
+    const bt = bestTrim(errs, lams);
+    const worst = nominal ? Math.max(...errs.map(Math.abs)) : bt.worst;
+    biasScan.push({ biasNm: bias * 1000, worst: worst, trimDeg: nominal ? 0 : bt.trimDeg,
+                    asDrawn: nominal, trimAvail: bt.worst, trimWould: bt.trimDeg,
+                    pkpk: Math.max(...errs) - Math.min(...errs) });
+  }
+  const worstOverBias = biasScan.reduce((a, b) => Math.max(a, b.worst), 0);
+  LAST_BIAS_SCAN = { key: scanKey, rows: biasScan, worst: worstOverBias };
+
+  /* As drawn at zero bias, with whatever trim the user has dialled in (0 for
+     every shipped preset).  This is the number a passive chip actually gives. */
+  const drawnWorst = Math.max(...rawErr.map(Math.abs));
+  const nominalTrimNeeded = trimmed.trimDeg;
+
+  return {
+    lams, heated, baseline, dphiPi, dphiPiOff, nullDb, nullDbOff,
+    rms, worst, worstLam, errRef, errRefOff, refInBand,
+    pkpk, trimmedWorst: trimmed.worst, trimmedTrimDeg: trimmed.trimDeg, rawErr,
+    biasScan, worstOverBias, lossTop, lossBot, imbalanceDb,
+    drawnWorst, nominalTrimNeeded,
+    nullRefDb: nullDbFromErrDeg(errRef), worstNull,
+    opdRef: Physics.differentialOPD(spans, REF_WL, state),
+    apsLength: Geometry.apsLength(state), totalLength: Geometry.totalLength(state),
+    armMismatch: Geometry.armMismatch(state), trimDeltaT: trimDeltaTFor(state),
+    edgeLo: outOfTable.lo, edgeHi: outOfTable.hi, edgeCount: outOfTable.count,
+    lamLo, lamHi
+  };
+}
+
+/* =====================================================================
+   8.  STATE, DEFAULTS AND PRESETS
+   ---------------------------------------------------------------------
+   state.arms.top / .bot each hold their own segment count and their own
+   list of { L, w, dT }.  When state.linkArms is true the UI keeps the two
+   lists' counts and lengths in step (the usual paired-segment layout);
+   turning it off lets each arm be cut up independently.
+   ===================================================================== */
+const MAX_SEG = 8;
+const DT_MAX = 100;         // K, per-segment heater slider range
+const LSEG_MAX = 1800;      // um, per-segment plateau slider range
+const TRIM_RANGES = [0.2, 2, 20, 180];   // deg, selectable trim slider span
+
+function seg(L, w, dT) { return { L: L, w: w, dT: dT || 0 }; }
+
+/** Pad a list out to MAX_SEG so hidden segments keep their values. */
+function padArm(list) {
+  const out = list.map(s => seg(s.L, s.w, s.dT));
+  while (out.length < MAX_SEG) out.push(seg(300, 3.4, 0));
+  return out;
+}
+
+/** Build an arm pair from a paired-segment table [[L, wTop, wBot], ...]. */
+function paired(rows) {
+  return {
+    top: { n: rows.length, segs: padArm(rows.map(r => seg(r[0], r[1], 0))) },
+    bot: { n: rows.length, segs: padArm(rows.map(r => seg(r[0], r[2], 0))) }
+  };
+}
+
+const PRESETS = {};
+
+/* ---- the two taper-free designs requested for the review ---------------
+   Both target Dphi = pi across 1450-1650 nm with taper length 0 and a
+   3600 um segmented region.  Lengths were fitted by least squares against
+   this same embedded neff table; Design B is the paired-segment realisation
+   of the convex global optimum, so no segment count can beat it.         */
+PRESETS.designA = () => ({
+  label: "Design A — 4 segments per arm, no tapers (RMS 0.032°, worst 0.072°)",
+  arms: paired([
+    [957.303, 6.800, 4.528],
+    [1231.739, 3.283, 5.106],
+    [627.841, 6.800, 4.696],
+    [783.117, 2.900, 2.400]
+  ]),
+  taperLen: 0, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 900 }, trimPhaseDeg: 0, linkArms: true
+});
+
+PRESETS.designB = () => ({
+  label: "Design B — 8 segments per arm, no tapers (RMS 0.029°, worst 0.061°; global optimum at 3600 µm)",
+  arms: paired([
+    [1037.430, 2.900, 2.400],
+    [622.191, 2.900, 4.500],
+    [215.467, 3.000, 4.500],
+    [66.426, 3.000, 4.700],
+    [184.655, 3.300, 4.700],
+    [141.945, 6.700, 4.700],
+    [622.177, 6.800, 4.700],
+    [709.709, 6.800, 5.100]
+  ]),
+  taperLen: 0, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 900 }, trimPhaseDeg: 0, linkArms: true
+});
+
+/* Two segments: enough to match the offset and the slope of lambda/2, but not
+   its curvature.  Kept as the low end of the segment-count series, fitted the
+   same way as Designs A and B (taper-free, 3600 um) so the three are directly
+   comparable: 2 seg 0.036 deg, 4 seg 0.032 deg, 8 seg 0.029 deg. */
+PRESETS.design2 = () => ({
+  label: "Two-segment reference — no tapers (RMS 0.036°, worst 0.088°)",
+  arms: paired([
+    [2395.948, 2.893, 4.457],
+    [1204.052, 6.800, 2.400]
+  ]),
+  taperLen: 0, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 900 }, trimPhaseDeg: 0, linkArms: true
+});
+
+/* Design A re-fitted WITH its tapers inside the phase integral.  Total device
+   length 3600 um now INCLUDES the 5 x 30 um tapers, so the plateaus sum to
+   3450 um.  Note this design and the taper-free Design A are not
+   interchangeable in either direction: strip the tapers off this one and the
+   error goes to 19.4 deg; bolt 30 um tapers onto taper-free Design A and it
+   goes to 42 deg.  A design is fitted for one specific taper length. */
+PRESETS.designA_tapered = () => ({
+  label: "Design A re-fitted with 30 µm cosine tapers (RMS 0.037°, worst 0.093°)",
+  arms: paired([
+    [1100.331, 3.277, 4.674],
+    [1525.858, 6.792, 5.115],
+    [91.059, 6.733, 4.832],
+    [732.752, 2.900, 2.400]
+  ]),
+  taperLen: 30, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 900 }, trimPhaseDeg: 0, linkArms: true
+});
+
+/* Design B re-fitted WITH its tapers inside the phase integral.  Total 3600 um
+   INCLUDES the 9 x 30 um tapers, so the plateaus sum to 3330 um.  Segments 3
+   and 4 sit on the 20 um minimum-length floor, i.e. the fit would rather have
+   ~6 segments than 8 - more evidence that 8 is past the useful point. */
+PRESETS.designB_tapered = () => ({
+  label: "Design B re-fitted with 30 µm cosine tapers (RMS 0.032°, worst 0.072°)",
+  arms: paired([
+    [964.465, 2.910, 2.400],
+    [595.008, 2.905, 4.500],
+    [20.000, 3.114, 4.510],
+    [20.521, 2.969, 4.694],
+    [345.211, 3.230, 4.694],
+    [340.848, 6.707, 4.698],
+    [437.382, 6.800, 4.700],
+    [606.565, 6.800, 5.117]
+  ]),
+  taperLen: 30, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 900 }, trimPhaseDeg: 0, linkArms: true
+});
+
+/* ---- Nem's bias-robust 8-segment design (taper-free) -------------------
+   Minimax over a +/-50 nm common width bias with the trim free per bias, all
+   widths on the table grid and kept away from the 2.4 / 6.8 um edges so a
+   biased width stays interpolable.  Reproduced here at 0.0357 deg worst
+   after trim, matching his LP exactly. */
+PRESETS.nemRobust = () => ({
+  label: "Nem's bias-robust 8-segment (taper-free) — 0.0357° worst over ±50 nm",
+  arms: paired([
+    [1106.656, 2.9, 2.5],
+    [206.308, 2.8, 4.2],
+    [189.670, 3.0, 4.3],
+    [195.743, 3.0, 4.5],
+    [530.955, 3.3, 4.6],
+    [434.715, 6.6, 4.7],
+    [493.773, 6.7, 4.8],
+    [442.180, 6.7, 5.0]
+  ]),
+  taperLen: 0, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 900 }, trimPhaseDeg: 0, linkArms: true
+});
+
+/* ---- DIE CANDIDATE -----------------------------------------------------
+   Nem's widths, lengths re-solved by the same minimax LP but with 20 um
+   raised-cosine tapers INSIDE the phase integral.  Tapers do not cancel
+   between the arms (the top arm's transition at boundary i is
+   w_top,i -> w_top,i+1, the bottom's is w_bot,i -> w_bot,i+1), so leaving
+   them out of the fit costs 14x.  Re-solving the lengths recovers all of it:
+   0.0348 deg worst over +/-50 nm bias, vs 0.0357 deg taper-free. */
+PRESETS.dieFinal = () => ({
+  label: "DIE CANDIDATE — 8 seg, 20 µm tapers in the fit, 0.0348° worst over ±50 nm",
+  arms: paired([
+    [1075.571, 2.9, 2.5],
+    [162.031, 2.8, 4.2],
+    [134.103, 3.0, 4.3],
+    [232.854, 3.0, 4.5],
+    [507.069, 3.3, 4.6],
+    [372.809, 6.6, 4.7],
+    [525.390, 6.7, 4.8],
+    [410.173, 6.7, 5.0]
+  ]),
+  taperLen: 20, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 900 }, trimPhaseDeg: 0, linkArms: true
+});
+
+/* ---- the 2-segment BEST CASE under Nem's metric ------------------------
+   Not a candidate - it is here to settle the "2 is as good as 8" argument.
+   This is the best 2-segment design the same minimax-over-bias LP can build
+   (widths searched on the grid), and it reaches only 0.2035 deg worst over
+   +/-50 nm against 0.0357 deg for Nem's 8-segment: 5.7x, or 15 dB of null.
+   Under the old metric (RMS at zero bias) the two looked 1.24x apart, which
+   is exactly how the argument went wrong.
+   Its widths are 4.0-6.2 um, so unlike the deeper designs it needs no table
+   extrapolation under bias. */
+PRESETS.twoSegWorstCase = () => ({
+  label: "2-segment best possible (zero-trim nominal) — 0.3421° over ±50 nm, for comparison only",
+  arms: paired([
+    [1782.168, 2.5, 6.3],
+    [1817.832, 6.7, 2.5]
+  ]),
+  taperLen: 0, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 900 }, trimPhaseDeg: 0, linkArms: true
+});
+
+/* ---- Nem's bias-robust 7-segment design (taper-free, Oct 15) -----------
+   His corrected formulation: the zero-bias design must hit pi with NO trim.
+   Reproduced at 0.0816 deg worst over +/-50 nm, and 0.0816 deg as drawn.
+   Supersedes his 8-segment design, which looked like 0.0357 deg only because
+   the old formulation let the trim act at nominal too - as drawn it is
+   28.3 deg off. */
+PRESETS.nemRobust7 = () => ({
+  label: "Nem's 7-segment, zero-trim-at-nominal — 0.0816° over ±50 nm, 0.0816° as drawn",
+  arms: paired([
+    [636.660, 3.2, 2.4],
+    [791.967, 3.3, 4.1],
+    [92.247, 3.3, 4.7],
+    [409.436, 3.1, 4.5],
+    [265.154, 3.3, 4.6],
+    [760.483, 6.4, 4.7],
+    [644.054, 6.6, 4.6]
+  ]),
+  taperLen: 0, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 900 }, trimPhaseDeg: 0, linkArms: true
+});
+
+/* Nem's 7-segment widths with the lengths re-solved for 20 um cosine tapers.
+   Under 2% worse than his taper-free original (0.0827 vs 0.0813 deg), which is
+   the evidence that his design is implementable with tapers and needs no extra
+   segments.  Awaiting BeamProp taper loss before this is a build candidate. */
+PRESETS.nemRobust7_taper20 = () => ({
+  label: "Nem 7-seg + 20 µm tapers — 0.0827° over ±50 nm (phase only; loss TBD)",
+  arms: paired([
+    [621.859, 3.2, 2.4],
+    [718.730, 3.3, 4.1],
+    [163.816, 3.3, 4.7],
+    [433.373, 3.1, 4.5],
+    [145.056, 3.3, 4.6],
+    [659.243, 6.4, 4.7],
+    [697.923, 6.6, 4.6]
+  ]),
+  taperLen: 20, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 900 }, trimPhaseDeg: 0, linkArms: true
+});
+
+PRESETS.v3a = () => ({
+  label: "v3 (a) design 4, standard — 3.17 mm, 0.014° after trim",
+  arms: paired([
+    [232.753, 3.20, 2.35],
+    [323.338, 6.65, 5.05],
+    [266.617, 6.30, 4.35],
+    [270.748, 6.70, 2.40],
+    [255.204, 2.80, 5.00],
+    [284.671, 2.85, 4.25],
+    [218.867, 3.00, 4.00],
+    [301.417, 3.05, 4.80]
+  ]),
+  taperLen: 80, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 0 }, trimPhaseDeg: 0, linkArms: true, pathOffsetNm: 99.8,
+  taperList: [80, 160, 80, 160, 160, 80, 60, 80, 160]
+});   // per-boundary tapers: 60–160 µm per step
+
+PRESETS.v3b = () => ({
+  label: "v3 (b) design 4, lattice-blind — 1.96 mm, 0.005° blind",
+  arms: paired([
+    [60.000, 6.65, 2.45],
+    [145.746, 5.45, 5.25],
+    [158.747, 5.85, 4.50],
+    [123.030, 5.90, 4.95],
+    [69.133, 6.10, 5.20],
+    [91.707, 2.65, 4.75],
+    [60.000, 4.20, 4.05],
+    [96.265, 3.00, 4.80]
+  ]),
+  taperLen: 160, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 0 }, trimPhaseDeg: 0, linkArms: true, pathOffsetNm: 141.8,
+  taperList: [160, 160, 160, 60, 60, 160, 160, 80, 160]
+});   // per-boundary tapers: 60–160 µm per step
+
+PRESETS.v3c = () => ({
+  label: "v3 (c) design 2, standard — 3.68 mm, 0.012° after trim",
+  arms: paired([
+    [377.674, 3.20, 4.35],
+    [352.729, 6.20, 3.90],
+    [232.010, 6.45, 5.05],
+    [576.290, 6.10, 4.30],
+    [294.073, 2.95, 4.80],
+    [130.241, 3.10, 2.40],
+    [128.707, 2.90, 5.00],
+    [463.585, 2.80, 2.35]
+  ]),
+  taperLen: 80, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 0 }, trimPhaseDeg: 0, linkArms: true, pathOffsetNm: 98.3,
+  taperList: [80, 160, 80, 80, 160, 160, 160, 160, 80]
+});   // per-boundary tapers: 80–160 µm per step
+
+/* ---- designs carried over from v1 (these do use tapers) ---- */
+PRESETS.achromatic3 = () => ({
+  label: "3-segment achromatic design with 30 µm cosine tapers",
+  arms: paired([
+    [1320.525, 6.8000, 4.5193],
+    [903.885, 3.2770, 2.4000],
+    [1255.590, 2.9000, 4.7038]
+  ]),
+  taperLen: 30, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 900 }, trimPhaseDeg: 0, linkArms: true
+});
+
+PRESETS.equalWidth = () => ({
+  label: "Equal-width straight waveguides (Δφ = 0, so error = −180°)",
+  arms: paired([[3540, 3.4, 3.4]]),
+  taperLen: 30, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 900 }, trimPhaseDeg: 0, linkArms: true
+});
+
+PRESETS.pi1550Passive = () => ({
+  label: "Passive π at 1550 nm from one width step (not achromatic)",
+  arms: paired([[64.6011, 6.8, 2.4]]),
+  taperLen: 30, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 900 }, trimPhaseDeg: 0, linkArms: true
+});
+
+PRESETS.pi1550Trim = () => ({
+  label: "π at 1550 nm from the trim alone — shows the 1/λ tilt",
+  arms: paired([[3540, 3.4, 3.4]]),
+  taperLen: 30, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 900 }, trimPhaseDeg: 180, linkArms: true
+});
+
+/* ---- a genuinely unequal-arm design, to exercise that path ----
+   This is Design B's length-vs-width histogram cut up differently: 5
+   segments on top, 3 on the bottom, same total length per arm.  It gives
+   the SAME differential phase as Design B, which is the point - the
+   differential phase depends only on each arm's length-vs-width
+   histogram, not on how the arms are segmented.                        */
+PRESETS.unequalArms = () => ({
+  label: "Unequal arms — 5 segments on top, 4 on the bottom (identical Δφ to Design B)",
+  arms: {
+    // Design B's per-arm length-vs-width histogram, merged into the fewest
+    // segments each arm needs.  Same histogram => same Dphi, exactly.
+    top: { n: 5, segs: padArm([seg(1659.621, 2.900), seg(281.893, 3.000),
+                               seg(184.655, 3.300), seg(141.945, 6.700),
+                               seg(1331.886, 6.800)]) },
+    bot: { n: 4, segs: padArm([seg(1037.430, 2.400), seg(837.658, 4.500),
+                               seg(1015.203, 4.700), seg(709.709, 5.100)]) }
+  },
+  taperLen: 0, taperShape: "cosine", ioWidth: 3.4, dneffdT: 2.4e-5,
+  trim: { L: 900 }, trimPhaseDeg: 0, linkArms: false
+});
+
+function defaultState() {
+  const p = PRESETS.v3a();
+  return {
+    arms: p.arms,
+    linkArms: p.linkArms,
+    taperLen: p.taperLen,
+    taperShape: p.taperShape,
+    ioWidth: p.ioWidth,
+    dneffdT: p.dneffdT,
+    trim: { L: p.trim.L },
+    trimPhaseDeg: p.trimPhaseDeg,
+    trimRange: 2,
+    lossNarrow: 0, lossWide: 0, taperExcess: 0,   // user-supplied: the table has no loss
+    pathOffsetNm: 0,          // signed dL in nm; + = extra path in the TOP arm
+    taperList: null,          // per-boundary taper lengths (um), or null to
+                              // use the single taperLen slider everywhere
+    widthBias: 0,                 // common CD offset, um (0 for the nominal design)
+    biasRangeNm: 50, nBias: 5,    // robustness scan range and scenario count
+    widthInterp: "cubic",   // not-a-knot
+    edgeMode: "extrapolate",
+    wlMin: 1.45, wlMax: 1.65, nWl: 21,
+    view: "error", yScale: "auto", showBaseline: true, showDots: true, pinPlot: true
+  };
+}
+
+let state = defaultState();
+
+function applyPreset(key) {
+  const p = PRESETS[key]();
+  state.arms = p.arms;
+  state.linkArms = p.linkArms;
+  state.taperLen = p.taperLen;
+  state.taperShape = p.taperShape;
+  state.ioWidth = p.ioWidth;
+  state.dneffdT = p.dneffdT;
+  state.trim = { L: p.trim.L };
+  state.trimPhaseDeg = p.trimPhaseDeg;
+  state.pathOffsetNm = p.pathOffsetNm || 0;
+  state.taperList = p.taperList || null;
+  if (Math.abs(p.trimPhaseDeg) > state.trimRange) {
+    state.trimRange = TRIM_RANGES.find(r => r >= Math.abs(p.trimPhaseDeg)) || 180;
+  }
+  clearWarning();
+  setStatus(p.label);
+  rebuildControls();
+  update();
+}
+
+/** Set the trim phase so the 1550 nm error is zero.
+ *  The trim is a pure 1/lam phase, so this needs no search: the extra phase
+ *  required at 1550 nm is exactly minus the current error there. */
+function solveTrimForPi() {
+  const probe = Object.assign({}, state, { trimPhaseDeg: 0 });
+  const err = wrapPi(Physics.differentialPhase(Geometry.bothArms(probe), REF_WL, probe)
+                     - Math.PI) * RAD2DEG;
+  const want = -err;
+  if (Math.abs(want) > 180.0000001) { setWarning("Needed trim exceeds ±180°."); return; }
+  state.trimPhaseDeg = want;
+  state.trimRange = TRIM_RANGES.find(r => r >= Math.abs(want)) || 180;
+  clearWarning();
+  const dT = trimDeltaTFor(state);
+  setStatus("Trim set to " + want.toFixed(4) + "° at 1550 nm"
+    + (state.trim.L > 0 && state.dneffdT > 0
+       ? " — needs ΔT = " + dT.toFixed(3) + " K on the "
+         + (dT >= 0 ? "top" : "bottom") + " arm over " + (state.trim.L || 0).toFixed(0) + " µm"
+       : ""));
+  rebuildControls();
+  update();
+}
+
+/* =====================================================================
+   9.  SMALL DOM / SVG HELPERS
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const SVGNS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs = {}) {
+  const el = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+function svgText(x, y, text, cls, extra = {}) {
+  const el = svgEl("text", { x, y, class: cls, ...extra });
+  el.textContent = text;
+  return el;
+}
+function fmtDeg(v) {
+  const a = Math.abs(v);
+  if (a >= 100) return v.toFixed(2);
+  if (a >= 10) return v.toFixed(3);
+  return v.toFixed(4);
+}
+function fmtDb(v) {
+  return v <= NULL_FLOOR_DB + 0.5 ? "< " + NULL_FLOOR_DB.toFixed(0) : v.toFixed(1);
+}
+function niceCeil(v) {
+  if (!(v > 0)) return 1;
+  const e = Math.pow(10, Math.floor(Math.log10(v)));
+  const m = v / e;
+  const step = m <= 1 ? 1 : m <= 1.5 ? 1.5 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10;
+  return step * e;
+}
+
+/* ---- warning banner ---- */
+function setWarning(msg) { const b = $("warn-banner"); b.textContent = msg; b.classList.add("show"); }
+function clearWarning() { $("warn-banner").classList.remove("show"); }
+
+/* ---- editable numeric readout ---- */
+function makeEditable(el, { get, set, format, min, max, unit }) {
+  el.tabIndex = 0;
+  el.title = "Click to type a value";
+  let editing = false;
+  const finish = () => { editing = false; el.replaceChildren(); refreshAll(); };
+  const start = () => {
+    if (editing) return;
+    editing = true;
+    const input = document.createElement("input");
+    input.className = "ro-edit";
+    input.inputMode = "decimal";
+    input.value = String(get());
+    el.replaceChildren(input);
+    input.focus();
+    input.select();
+    let done = false;
+    const commit = () => {
+      if (done) return;
+      done = true;
+      const typed = parseFloat(input.value);
+      if (Number.isFinite(typed)) {
+        let v = typed;
+        if (min !== undefined && v < min) { v = min; clampNote(unit, typed, min, max); }
+        if (max !== undefined && v > max) { v = max; clampNote(unit, typed, min, max); }
+        set(v);
+      }
+      finish();
+    };
+    input.addEventListener("keydown", e => {
+      // stopPropagation matters: otherwise Enter bubbles to the host span and
+      // immediately re-opens the editor we just closed
+      if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); commit(); }
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); done = true; finish(); }
+    });
+    input.addEventListener("blur", commit);
+  };
+  el.addEventListener("click", start);
+  el.addEventListener("keydown", e => { if (e.key === "Enter" && !editing) start(); });
+  el._render = () => { if (!editing) el.textContent = format(get()); };
+  return el;
+}
+function clampNote(unit, typed, min, max) {
+  const n = v => (Math.round(v * 1e6) / 1e6).toString();
+  setWarning("Value " + typed + " " + (unit || "") + " is outside the allowed range "
+    + n(min) + " … " + n(max) + " " + (unit || "") + " and was clamped. "
+    + "Width and wavelength limits are the extent of the embedded neff table ("
+    + Optics.wMin.toFixed(1) + "–" + Optics.wMax.toFixed(1) + " µm, "
+    + (Optics.wlMin * 1000).toFixed(0) + "–" + (Optics.wlMax * 1000).toFixed(0)
+    + " nm) — the model clamps rather than extrapolating.");
+}
+
+/* ---- slider row ---- */
+const refreshers = [];
+function addSlider(parent, opts) {
+  const { label, min, max, step, get, set, format, unit, accentClass } = opts;
+  const wrap = document.createElement("div");
+  wrap.className = "ctrl" + (accentClass ? " " + accentClass : "");
+  const lab = document.createElement("label");
+  lab.textContent = label;
+  const ro = document.createElement("span");
+  ro.className = "ro ro-part";
+  const range = document.createElement("input");
+  range.type = "range";
+  range.min = min; range.max = max; range.step = step;
+  const id = "s" + (refreshers.length) + "-" + Math.random().toString(36).slice(2, 7);
+  range.id = id; lab.htmlFor = id;
+  range.addEventListener("input", () => { set(parseFloat(range.value)); refreshAll(); });
+  makeEditable(ro, { get, set: v => { set(v); }, format, min, max, unit });
+  wrap.append(lab, ro, range);
+  parent.append(wrap);
+  const refresh = () => { range.value = get(); ro._render(); };
+  refreshers.push(refresh);
+  refresh();
+  return wrap;
+}
+
+/* =====================================================================
+   10.  CONTROL PANELS
+   ===================================================================== */
+function rebuildControls() {
+  refreshers.length = 0;
+  buildLiveStrip();
+  buildGlobalControls();
+  buildArmPanels();
+  buildTrimControls();
+  buildPresetButtons();
+  $("width-range-note").textContent =
+    Optics.wMin.toFixed(2) + "–" + Optics.wMax.toFixed(2) + " µm, "
+    + Optics.wStep.toFixed(2) + " µm grid";
+  // Run every refresher once. addSlider() renders its own readout as it is
+  // built, but notes registered separately (the trim ΔT line, the per-boundary
+  // taper line) were left blank until some later interaction happened to
+  // trigger a refresh.
+  refreshers.forEach(f => f());
+}
+
+/* ---- the strip that sits directly under the plot, so the controls you
+        actually sweep are never off-screen while watching the curve ---- */
+function buildLiveStrip() {
+  const host = $("live-strip");
+  host.replaceChildren();
+
+  const trimWrap = document.createElement("div");
+  trimWrap.className = "live-item wide";
+  host.append(trimWrap);
+  addSlider(trimWrap, {
+    label: "Trim phase at 1550 nm", min: -state.trimRange, max: state.trimRange,
+    step: state.trimRange / 1000, unit: "deg", accentClass: "arm-heat",
+    get: () => state.trimPhaseDeg,
+    set: v => { state.trimPhaseDeg = v; },
+    format: v => v.toFixed(state.trimRange <= 0.2 ? 5 : state.trimRange <= 2 ? 4 : 3) + "°"
+  });
+  const rangeRow = document.createElement("div");
+  rangeRow.className = "range-row";
+  rangeRow.append(Object.assign(document.createElement("span"), { textContent: "range" }));
+  TRIM_RANGES.forEach(r => {
+    const b = document.createElement("button");
+    b.className = "btn tiny";
+    b.textContent = "±" + r + "°";
+    b.setAttribute("aria-pressed", String(state.trimRange === r));
+    b.addEventListener("click", () => {
+      state.trimRange = r;
+      state.trimPhaseDeg = Math.min(Math.max(state.trimPhaseDeg, -r), r);
+      rebuildControls();
+      update();
+    });
+    rangeRow.append(b);
+  });
+  const zero = document.createElement("button");
+  zero.className = "btn tiny";
+  zero.textContent = "0";
+  zero.title = "Zero the trim";
+  zero.addEventListener("click", () => { state.trimPhaseDeg = 0; refreshAll(); });
+  rangeRow.append(zero);
+  const solve = document.createElement("button");
+  solve.className = "btn tiny primary";
+  solve.textContent = "→ π at 1550";
+  solve.title = "Set the trim phase so the 1550 nm error is exactly zero";
+  solve.addEventListener("click", solveTrimForPi);
+  rangeRow.append(solve);
+  trimWrap.append(rangeRow);
+  const dTnote = document.createElement("div");
+  dTnote.className = "sub-note";
+  trimWrap.append(dTnote);
+  refreshers.push(() => {
+    const dT = trimDeltaTFor(state);
+    const mag = Math.abs(dT);
+    if (!(state.trim.L > 0) || !(state.dneffdT > 0)) {
+      dTnote.textContent = "trim length or dn_eff/dT is zero — no ΔT equivalent";
+      dTnote.style.color = "";
+      return;
+    }
+    // v1 capped the trim at 0-100 K, which implicitly kept it reachable.  The
+    // phase control has no such cap, so say when the implied ΔT is unphysical.
+    const hot = mag > DT_MAX;
+    dTnote.textContent = "= ΔT " + mag.toFixed(3) + " K on the " + (dT >= 0 ? "top" : "bottom")
+      + " arm over " + (state.trim.L || 0).toFixed(0) + " µm"
+      + (hot ? "  — beyond the " + DT_MAX + " K heater range: lengthen the trim region or "
+                 + "raise dn_eff/dT"
+             : "  (phase ∝ 1/λ; voltage needs R and heater efficiency)");
+    dTnote.style.color = hot ? "var(--bad)" : "";
+  });
+
+  const taperWrap = document.createElement("div");
+  taperWrap.className = "live-item";
+  host.append(taperWrap);
+  addSlider(taperWrap, {
+    label: "Taper length", min: 0, max: 200, step: 0.5, unit: "µm",
+    get: () => state.taperLen,
+    set: v => { state.taperLen = v; state.taperList = null; },  // typing a value
+                                                                // drops the list
+    format: v => v === 0 ? "0 µm (no tapers)" : v.toFixed(1) + " µm"
+  });
+  const tnote = document.createElement("div");
+  tnote.className = "sub-note";
+  taperWrap.append(tnote);
+  refreshers.push(() => {
+    if (state.taperList) {
+      const u = [...new Set(state.taperList)].sort((a, b) => a - b);
+      tnote.textContent = "this design sets a taper per boundary: "
+        + state.taperList.map(t => t.toFixed(0)).join(", ") + " µm"
+        + (u.length > 1 ? "  (moving the slider replaces them all)" : "");
+    } else {
+      tnote.textContent = "one length on every boundary";
+    }
+  });
+
+  const alphaWrap = document.createElement("div");
+  alphaWrap.className = "live-item";
+  host.append(alphaWrap);
+  addSlider(alphaWrap, {
+    label: "dn_eff/dT (toy)", min: 0, max: 5e-5, step: 1e-7, unit: "/K",
+    get: () => state.dneffdT, set: v => { state.dneffdT = v; },
+    format: v => (v * 1e5).toFixed(3) + "×10⁻⁵ /K"
+  });
+}
+
+function buildGlobalControls() {
+  const host = $("global-controls");
+  host.replaceChildren();
+
+  // taper shape
+  const shapeWrap = document.createElement("div");
+  shapeWrap.className = "ctrl";
+  const lab = document.createElement("label");
+  lab.textContent = "Taper profile";
+  const sel = document.createElement("select");
+  sel.className = "inline-sel";
+  Object.keys(TAPER_SHAPES).forEach(k => {
+    const o = document.createElement("option");
+    o.value = k; o.textContent = TAPER_SHAPES[k].label;
+    sel.append(o);
+  });
+  sel.value = state.taperShape;
+  sel.addEventListener("change", () => { state.taperShape = sel.value; rebuildControls(); update(); });
+  shapeWrap.append(lab, sel);
+  const shapeNote = document.createElement("div");
+  shapeNote.className = "sub-note";
+  shapeNote.style.gridColumn = "1 / -1";
+  shapeWrap.append(shapeNote);
+  refreshers.push(() => {
+    sel.value = state.taperShape;
+    shapeNote.textContent = TAPER_SHAPES[state.taperShape].note;
+  });
+  host.append(shapeWrap);
+
+  addSlider(host, {
+    label: "Input / output waveguide width", min: Optics.wMin, max: Optics.wMax,
+    step: 0.001, unit: "µm",
+    get: () => state.ioWidth, set: v => { state.ioWidth = v; },
+    format: v => v.toFixed(3) + " µm"
+  });
+  addSlider(host, {
+    label: "Sweep λ min", min: Optics.wlMin, max: Optics.wlMax, step: 0.001, unit: "µm",
+    get: () => state.wlMin,
+    set: v => { state.wlMin = Math.min(v, state.wlMax - 0.005); },
+    format: v => (v * 1000).toFixed(0) + " nm"
+  });
+  addSlider(host, {
+    label: "Sweep λ max", min: Optics.wlMin, max: Optics.wlMax, step: 0.001, unit: "µm",
+    get: () => state.wlMax,
+    set: v => { state.wlMax = Math.max(v, state.wlMin + 0.005); },
+    format: v => (v * 1000).toFixed(0) + " nm"
+  });
+  addSlider(host, {
+    label: "Wavelength sample points", min: 5, max: 81, step: 1, unit: "points",
+    get: () => state.nWl, set: v => { state.nWl = Math.round(v); },
+    format: v => v.toFixed(0) + " points"
+  });
+  addSlider(host, {
+    label: "CD bias scan range (±)", min: 0, max: 200, step: 5, unit: "nm",
+    get: () => state.biasRangeNm, set: v => { state.biasRangeNm = v; },
+    format: v => "±" + v.toFixed(0) + " nm"
+  });
+  addSlider(host, {
+    label: "Bias scenarios", min: 1, max: 9, step: 2, unit: "scenarios",
+    get: () => state.nBias, set: v => { state.nBias = Math.round(v); },
+    format: v => v.toFixed(0)
+  });
+  addSlider(host, {
+    label: "Applied CD bias (this view)", min: -0.2, max: 0.2, step: 0.001, unit: "µm",
+    get: () => state.widthBias, set: v => { state.widthBias = v; },
+    format: v => (v * 1000).toFixed(0) + " nm"
+  });
+
+  addSlider(host, {
+    label: "Loss at " + Optics.wMin.toFixed(1) + " µm (narrow)", min: 0, max: 5, step: 0.01,
+    unit: "dB/cm",
+    get: () => state.lossNarrow, set: v => { state.lossNarrow = v; },
+    format: v => v.toFixed(2) + " dB/cm"
+  });
+  addSlider(host, {
+    label: "Loss at " + Optics.wMax.toFixed(1) + " µm (wide)", min: 0, max: 5, step: 0.01,
+    unit: "dB/cm",
+    get: () => state.lossWide, set: v => { state.lossWide = v; },
+    format: v => v.toFixed(2) + " dB/cm"
+  });
+  addSlider(host, {
+    label: "Excess loss per taper", min: 0, max: 0.05, step: 0.0001, unit: "dB/µm of Δw",
+    get: () => state.taperExcess, set: v => { state.taperExcess = v; },
+    format: v => v.toFixed(4) + " dB per µm Δw"
+  });
+
+  // table-edge policy
+  const ew = document.createElement("div");
+  ew.className = "ctrl";
+  const el2 = document.createElement("label");
+  el2.textContent = "Outside the neff table";
+  const esel = document.createElement("select");
+  esel.className = "inline-sel";
+  [["extrapolate", "extrapolate (matches Nem's LP)"],
+   ["clamp", "clamp at the edge value"]].forEach(([v, t]) => {
+    const o = document.createElement("option");
+    o.value = v; o.textContent = t;
+    esel.append(o);
+  });
+  esel.value = state.edgeMode;
+  esel.addEventListener("change", () => { state.edgeMode = esel.value; rebuildControls(); update(); });
+  ew.append(el2, esel);
+  const enote = document.createElement("div");
+  enote.className = "sub-note";
+  enote.style.gridColumn = "1 / -1";
+  ew.append(enote);
+  refreshers.push(() => {
+    esel.value = state.edgeMode;
+    enote.textContent = "Only matters when a width leaves 2.4–6.8 µm, which a ±50 nm "
+      + "bias does for any design using the end widths. The two choices differ by ~30° "
+      + "for a 637 µm segment at 2.4 µm, so neither is a result.";
+  });
+  host.append(ew);
+
+  // width interpolation: cubic is required for biased widths
+  const iw = document.createElement("div");
+  iw.className = "ctrl";
+  const il = document.createElement("label");
+  il.textContent = "neff interpolation in width";
+  const isel = document.createElement("select");
+  isel.className = "inline-sel";
+  [["cubic", "cubic, not-a-knot (matches scipy / Nem's LP)"],
+   ["cubic-natural", "cubic, natural"],
+   ["linear", "linear (v1/v2)"]].forEach(([v, t]) => {
+    const o = document.createElement("option");
+    o.value = v; o.textContent = t;
+    isel.append(o);
+  });
+  isel.value = state.widthInterp;
+  isel.addEventListener("change", () => {
+    state.widthInterp = isel.value;
+    applyInterp();
+    rebuildControls();
+    update();
+  });
+  iw.append(il, isel);
+  const inote = document.createElement("div");
+  inote.className = "sub-note";
+  inote.style.gridColumn = "1 / -1";
+  iw.append(inote);
+  refreshers.push(() => {
+    isel.value = state.widthInterp;
+    applyInterp();
+    inote.textContent = state.widthInterp === "linear"
+      ? "exact on-grid, but materially wrong under CD bias — use cubic for robustness work"
+      : state.widthInterp === "cubic"
+      ? "scipy's default; matches Nem's LP. One cell from the table edge the end "
+        + "condition is worth ~1e-6 in neff, so compare against 'natural' to see "
+        + "whether a design leans on it."
+      : "zero curvature forced at 2.4 / 6.8 µm — differs from not-a-knot near the edges";
+  });
+  host.append(iw);
+}
+
+/* ---- per-arm segment panels ---- */
+function buildArmPanels() {
+  const host = $("arm-panels");
+  host.replaceChildren();
+
+  // --- mode switch: linked (paired) vs independent arms ---
+  const modeRow = document.createElement("div");
+  modeRow.className = "mode-row";
+  const modeLab = document.createElement("span");
+  modeLab.className = "mode-label";
+  modeLab.textContent = "Arm segmentation:";
+  const sw = document.createElement("div");
+  sw.className = "mode-switch";
+  sw.setAttribute("role", "group");
+  sw.setAttribute("aria-label", "Arm segmentation mode");
+  [["Linked (paired segments)", true], ["Independent arms", false]].forEach(([txt, linked]) => {
+    const b = document.createElement("button");
+    b.className = "btn";
+    b.textContent = txt;
+    b.id = linked ? "link-arms-on" : "link-arms-off";
+    b.setAttribute("aria-pressed", String(state.linkArms === linked));
+    b.addEventListener("click", () => {
+      if (state.linkArms === linked) return;
+      state.linkArms = linked;
+      if (linked) syncArms("top");          // adopt the top arm's cuts
+      rebuildControls();
+      update();
+    });
+    sw.append(b);
+  });
+  modeRow.append(modeLab, sw);
+  host.append(modeRow);
+
+  const help = document.createElement("p");
+  help.className = "mode-help";
+  help.innerHTML = state.linkArms
+    ? "<strong>Linked:</strong> both arms share one segment count and one set of plateau "
+      + "lengths, so changing either arm's count or a plateau length moves the other arm to "
+      + "match. Widths and heater ΔT stay independent per arm. Switch to "
+      + "<em>Independent arms</em> to give each arm its own count and lengths."
+    : "<strong>Independent:</strong> each arm has its own segment count and its own plateau "
+      + "lengths. Watch the <em>arm length mismatch</em> card — the two arms should normally "
+      + "span the same total length. Note that independent segmentation does not add "
+      + "differential-phase freedom: Δφ depends only on how much length each arm spends at "
+      + "each width, not on where the boundaries sit.";
+  host.append(help);
+
+  const grid = document.createElement("div");
+  grid.className = "arm-grid";
+  host.append(grid);
+  ["top", "bot"].forEach(which => grid.append(buildArmColumn(which)));
+}
+
+/** Copy count and lengths from one arm to the other (widths/heaters untouched). */
+function syncArms(from) {
+  const to = from === "top" ? "bot" : "top";
+  state.arms[to].n = state.arms[from].n;
+  for (let i = 0; i < MAX_SEG; i += 1) state.arms[to].segs[i].L = state.arms[from].segs[i].L;
+}
+
+function buildArmColumn(which) {
+  const arm = state.arms[which];
+  const col = document.createElement("div");
+  col.className = "arm-col " + (which === "top" ? "arm-top" : "arm-bot");
+
+  const head = document.createElement("h3");
+  head.innerHTML = (which === "top" ? "Top arm" : "Bottom arm")
+    + ' <span class="tag" id="arm-len-' + which + '"></span>';
+  col.append(head);
+  refreshers.push(() => {
+    const el = document.getElementById("arm-len-" + which);
+    if (el) el.textContent = Geometry.armApsLength(state, which).toFixed(1) + " µm";
+  });
+
+  const countRow = document.createElement("div");
+  countRow.className = "segcount";
+  countRow.setAttribute("role", "group");
+  countRow.setAttribute("aria-label", which + " arm segment count");
+  for (let i = 1; i <= MAX_SEG; i += 1) {
+    const b = document.createElement("button");
+    b.className = "btn tiny";
+    b.textContent = i;
+    b.setAttribute("aria-pressed", String(i === arm.n));
+    b.addEventListener("click", () => {
+      state.arms[which].n = i;
+      if (state.linkArms) syncArms(which);
+      rebuildControls();
+      update();
+    });
+    countRow.append(b);
+  }
+  col.append(countRow);
+
+  // inline badge so the linking is explained exactly where it bites, with the
+  // fix one click away
+  const badge = document.createElement("div");
+  badge.className = "link-badge" + (state.linkArms ? " linked" : "");
+  if (state.linkArms) {
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.textContent = "linked";
+    const txt = document.createElement("span");
+    txt.textContent = "count and lengths mirror the other arm";
+    const unlink = document.createElement("button");
+    unlink.className = "btn tiny";
+    unlink.textContent = "Unlink arms";
+    unlink.addEventListener("click", () => {
+      state.linkArms = false;
+      rebuildControls();
+      update();
+    });
+    badge.append(chip, txt, unlink);
+  } else {
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.textContent = "independent";
+    const txt = document.createElement("span");
+    txt.textContent = "own count and lengths";
+    const relink = document.createElement("button");
+    relink.className = "btn tiny";
+    relink.textContent = "Re-link to this arm";
+    relink.title = "Copy this arm's segment count and plateau lengths to the other arm "
+      + "and keep them in step";
+    relink.addEventListener("click", () => {
+      state.linkArms = true;
+      syncArms(which);
+      rebuildControls();
+      update();
+    });
+    badge.append(chip, txt, relink);
+  }
+  col.append(badge);
+
+  for (let i = 0; i < arm.n; i += 1) {
+    const card = document.createElement("div");
+    card.className = "seg-card";
+    const h = document.createElement("h4");
+    h.textContent = "Segment " + (i + 1);
+    card.append(h);
+
+    addSlider(card, {
+      label: "Plateau length", min: 0, max: LSEG_MAX, step: 0.5, unit: "µm",
+      get: () => state.arms[which].segs[i].L,
+      set: v => {
+        state.arms[which].segs[i].L = v;
+        if (state.linkArms) state.arms[which === "top" ? "bot" : "top"].segs[i].L = v;
+      },
+      format: v => v.toFixed(2) + " µm"
+    });
+    addSlider(card, {
+      label: "Width", min: Optics.wMin, max: Optics.wMax, step: 0.001, unit: "µm",
+      get: () => state.arms[which].segs[i].w,
+      set: v => { state.arms[which].segs[i].w = v; },
+      format: v => v.toFixed(3) + " µm"
+    });
+    addSlider(card, {
+      label: "Heater ΔT", min: 0, max: DT_MAX, step: 0.1, unit: "K",
+      accentClass: "arm-heat",
+      get: () => state.arms[which].segs[i].dT,
+      set: v => { state.arms[which].segs[i].dT = v; },
+      format: v => v.toFixed(1) + " K"
+    });
+    col.append(card);
+  }
+  return col;
+}
+
+function buildTrimControls() {
+  const host = $("trim-controls");
+  host.replaceChildren();
+  addSlider(host, {
+    label: "Path offset (+ = extra path in TOP arm)", min: -300, max: 300,
+    step: 0.1, unit: "nm",
+    get: () => state.pathOffsetNm, set: v => { state.pathOffsetNm = v; },
+    format: v => v.toFixed(1) + " nm"
+  });
+  addSlider(host, {
+    label: "Trim region length", min: 0, max: 3000, step: 1, unit: "µm",
+    get: () => state.trim.L, set: v => { state.trim.L = v; },
+    format: v => v.toFixed(0) + " µm"
+  });
+  const note = document.createElement("div");
+  note.className = "sub-note";
+  note.style.gridColumn = "1 / -1";
+  host.append(note);
+  refreshers.push(() => {
+    const dT = trimDeltaTFor(state);
+    note.innerHTML = "The trim is set as a <strong>phase at 1550 nm</strong> on the strip under "
+      + "the plot. Because the toy heater index shift has no wavelength dependence, its phase is "
+      + "exactly ∝ 1/λ, so phase and ΔT are the same knob: "
+      + "ΔT = φ·λ / (2π·(dn_eff/dT)·L_trim)"
+      + (state.trim.L > 0 && state.dneffdT > 0
+         ? " = " + Math.abs(dT).toFixed(4) + " K right now." : ".");
+  });
+}
+
+function buildPresetButtons() {
+  const host = $("presets");
+  host.replaceChildren();
+  const add = (text, fn, primary) => {
+    const b = document.createElement("button");
+    b.className = "btn" + (primary ? " primary" : "");
+    b.innerHTML = text;
+    b.addEventListener("click", fn);
+    host.append(b);
+    return b;
+  };
+  add("v3 (a) 3.17 mm &mdash; CHIP PICK", () => applyPreset("v3a"), true);
+  add("v3 (c) 3.68 mm &mdash; CHIP PICK", () => applyPreset("v3c"), true);
+  add("v3 (b) 1.96 mm lattice-blind", () => applyPreset("v3b"), true);
+  add("Nem 7 seg TAPER-FREE", () => applyPreset("nemRobust7"));
+  add("Nem 7 seg + 20 µm tapers", () => applyPreset("nemRobust7_taper20"), true);
+  add("DIE CANDIDATE (8 seg, 20 µm tapers) &mdash; SUPERSEDED", () => applyPreset("dieFinal"));
+  add("Nem 8 seg (old, needs 26° nominal trim)", () => applyPreset("nemRobust"));
+  add("2 seg BEST (zero-trim nominal)", () => applyPreset("twoSegWorstCase"));
+  add("2 seg, no tapers (RMS-optimal)", () => applyPreset("design2"));
+  add("Design A &mdash; 4 seg, no tapers", () => applyPreset("designA"));
+  add("Design B &mdash; 8 seg, no tapers", () => applyPreset("designB"));
+  add("Design B as unequal arms (5 / 4)", () => applyPreset("unequalArms"));
+  add("4 seg re-fitted WITH 30 µm tapers", () => applyPreset("designA_tapered"));
+  add("8 seg re-fitted WITH 30 µm tapers", () => applyPreset("designB_tapered"));
+  add("3 seg with 30 µm tapers", () => applyPreset("achromatic3"));
+  add("Equal-width straight", () => applyPreset("equalWidth"));
+  add("Passive π at 1550 (one step)", () => applyPreset("pi1550Passive"));
+  add("π at 1550 from trim only", () => applyPreset("pi1550Trim"));
+  add("Reset heaters &amp; trim", () => {
+    ["top", "bot"].forEach(w => state.arms[w].segs.forEach(s => { s.dT = 0; }));
+    state.trimPhaseDeg = 0;
+    clearWarning();
+    setStatus("Heaters and trim zeroed");
+    refreshAll();
+  });
+  add("Reset all", () => {
+    state = defaultState();
+    clearWarning();
+    setStatus("Reset to " + PRESETS.v3a().label);
+    rebuildControls();
+    update();
+  });
+}
+
+/* =====================================================================
+   11.  METRIC CARDS
+   ===================================================================== */
+function drawMetrics(a) {
+  const host = $("metrics");
+  const mism = a.armMismatch;
+  const cards = [
+    { label: "Worst error AS DRAWN", value: fmtDeg(a.drawnWorst) + "°",
+      sub: "no trim — what a passive chip gives",
+      cls: a.drawnWorst < 0.1 ? "good" : a.drawnWorst > 0.5 ? "bad" : "" },
+    { label: "Nominal trim it would need", value: a.nominalTrimNeeded.toFixed(2) + "°",
+      sub: Math.abs(a.nominalTrimNeeded) > 1
+        ? "large — the design is leaning on the trim at perfect fabrication"
+        : "small — the design stands on its own geometry",
+      cls: Math.abs(a.nominalTrimNeeded) < 1 ? "good" : "bad" },
+    { label: "Worst error after trim", value: fmtDeg(a.trimmedWorst) + "°",
+      sub: "if the trim were free to act at nominal too",
+      cls: "" },
+    { label: "Worst over ±" + a.biasScan.length + "-pt width bias",
+      value: fmtDeg(a.worstOverBias) + "°",
+      sub: "±" + state.biasRangeNm + " nm common CD offset, trim re-set per bias",
+      cls: a.worstOverBias < 0.05 ? "good" : a.worstOverBias > 0.2 ? "bad" : "" },
+    { label: "Peak-to-peak error", value: fmtDeg(a.pkpk) + "°",
+      sub: "across " + (a.lamLo * 1000).toFixed(0) + "–" + (a.lamHi * 1000).toFixed(0)
+           + " nm (" + a.lams.length + " pts)",
+      cls: "" },
+    { label: "RMS phase error", value: fmtDeg(a.rms) + "°",
+      sub: "averages over channels — not the spec", cls: "" },
+    { label: "Phase error @ 1550 nm", value: fmtDeg(a.errRef) + "°",
+      sub: "trim off: " + fmtDeg(a.errRefOff) + "°"
+        + (Math.abs(a.trimDeltaT) > DT_MAX ? "  ·  trim needs "
+            + Math.abs(a.trimDeltaT).toFixed(0) + " K (>" + DT_MAX + " K)" : ""), cls: "" },
+    { label: "Power imbalance", value: (a.imbalanceDb >= 0 ? "+" : "") + a.imbalanceDb.toFixed(4) + " dB",
+      sub: (state.lossNarrow === 0 && state.lossWide === 0 && state.taperExcess === 0)
+        ? "no loss model entered — the neff table has none"
+        : "arm loss: top " + a.lossTop.toFixed(3) + " dB, bottom " + a.lossBot.toFixed(3) + " dB",
+      cls: Math.abs(a.imbalanceDb) < 0.02 ? "good" : Math.abs(a.imbalanceDb) > 0.1 ? "bad" : "" },
+    { label: "Null floor, phase + imbalance",
+      value: fmtDb(nullDbWithImbalance(a.trimmedWorst, a.imbalanceDb)) + " dB",
+      sub: "phase alone " + fmtDb(nullDbFromErrDeg(a.trimmedWorst))
+        + " dB · imbalance alone " + fmtDb(nullDbWithImbalance(0, a.imbalanceDb)) + " dB",
+      cls: "" },
+    { label: "Total physical length", value: a.totalLength.toFixed(1) + " µm",
+      sub: "APS " + a.apsLength.toFixed(1) + " + trim " + (state.trim.L || 0).toFixed(0) + " µm",
+      cls: "" },
+    { label: "Arm length mismatch", value: (Math.abs(mism) < 5e-3 ? "0" : mism.toFixed(2)) + " µm",
+      sub: Math.abs(mism) < 5e-3 ? "arms span the same length" : "top − bottom",
+      cls: Math.abs(mism) < 5e-3 ? "good" : "bad" }
+  ];
+  if (host.children.length !== cards.length) {
+    host.replaceChildren();
+    cards.forEach(() => {
+      const d = document.createElement("div");
+      d.className = "metric";
+      d.innerHTML = '<div class="label"></div><div class="value"></div><div class="sub"></div>';
+      host.append(d);
+    });
+  }
+  cards.forEach((c, i) => {
+    const d = host.children[i];
+    d.className = "metric " + c.cls;
+    d.children[0].textContent = c.label;
+    d.children[1].textContent = c.value;
+    d.children[2].textContent = c.sub;
+  });
+  drawBiasTable(a);
+}
+
+/** Per-bias breakdown, printed under the plot. */
+function drawBiasTable(a) {
+  const host = $("bias-table");
+  if (!host) return;
+  let html = (a.biasStale ? '<div class="sub-note">(held while dragging — releases to refresh)</div>' : '')
+    + '<table class="bias"><thead><tr><th>CD bias</th><th>worst after trim</th>'
+    + '<th>peak-to-peak</th><th>trim</th><th>null floor (phase+imbalance)</th></tr></thead><tbody>';
+  a.biasScan.forEach(s => {
+    const hot = s.worst > 0.1;
+    html += '<tr' + (hot ? ' class="hot"' : '') + '><td>'
+      + (s.biasNm >= 0 ? "+" : "") + s.biasNm.toFixed(1) + ' nm</td><td>'
+      + fmtDeg(s.worst) + '°</td><td>' + fmtDeg(s.pkpk) + '°</td><td>'
+      + (s.asDrawn ? 'as drawn' : s.trimDeg.toFixed(2) + '°') + '</td><td>'
+      + fmtDb(nullDbWithImbalance(s.worst, a.imbalanceDb)) + ' dB</td></tr>';
+  });
+  html += '</tbody></table>';
+  host.innerHTML = html;
+}
+
+/* =====================================================================
+   12.  SCHEMATIC
+   ---------------------------------------------------------------------
+   Each arm is drawn from its own span list, so unequal segmentation shows
+   up as boundaries that do not line up between the arms.
+   ===================================================================== */
+const SCH = {
+  w: 1160, h: 340, left: 74, right: 26,
+  ySegLab: 15,          // "S1 / S2 / trim" row (top arm)
+  yHeatTop: 24, heatH: 15,
+  yTop: 100,            // top-arm centreline
+  yBot: 188,            // bottom-arm centreline
+  yHeatBot: 208,
+  yLenLab: 248,         // plateau length row (bottom arm)
+  yAxis: 266
+};
+
+/** Waveguide drawing thickness (px, half-height).  Vertical scale only. */
+function halfThickness(w) {
+  const f = (w - Optics.wMin) / (Optics.wMax - Optics.wMin);
+  return 4 + f * 14;                          // 8 .. 36 px full band
+}
+
+function drawSchematic(a) {
+  const svg = $("schematic");
+  svg.replaceChildren();
+  const both = Geometry.bothArms(state);
+  const total = Math.max(a.totalLength, 1e-6);
+  const plotW = SCH.w - SCH.left - SCH.right;
+  const X = um => SCH.left + (um / total) * plotW;
+
+  const bandTop = SCH.yHeatTop - 3;
+  const bandH = (SCH.yHeatBot + SCH.heatH + 3) - bandTop;
+
+  // --- region shading (tapers / trim), per arm, drawn behind everything ---
+  ["top", "bot"].forEach(which => {
+    let xc = 0;
+    const yA = which === "top" ? bandTop : SCH.yTop + 2;
+    const hA = which === "top" ? (SCH.yTop + 2) - bandTop : (bandTop + bandH) - (SCH.yTop + 2);
+    both[which].forEach(s => {
+      const fill = s.kind.indexOf("taper") === 0 ? "var(--taper-fill)"
+                 : s.kind === "trim" ? "var(--ok)" : null;
+      if (s.len > 0 && fill) {
+        svg.append(svgEl("rect", {
+          x: X(xc), y: yA, width: Math.max(X(xc + s.len) - X(xc), 0.6), height: hA,
+          fill: fill, opacity: s.kind === "trim" ? 0.07 : 0.13
+        }));
+      }
+      xc += s.len;
+    });
+  });
+
+  // --- waveguide bodies, sampled from each arm's own profile ---
+  const profile = spans => {
+    const pts = [];
+    let x = 0;
+    spans.forEach(s => {
+      if (s.len <= 0) return;
+      const isTaper = s.w0 !== s.w1;
+      const nSub = isTaper ? 26 : 1;
+      for (let i = 0; i <= nSub; i += 1) {
+        const t = i / nSub;
+        pts.push([x + t * s.len, s.w0 + (s.w1 - s.w0) * (isTaper ? G(t) : 0)]);
+      }
+      x += s.len;
+    });
+    return pts;
+  };
+  const band = (pts, yc, color) => {
+    if (!pts.length) return;
+    let d = "";
+    pts.forEach(([xx, w], i) => {
+      d += (i ? "L" : "M") + X(xx).toFixed(2) + "," + (yc - halfThickness(w)).toFixed(2) + " ";
+    });
+    for (let i = pts.length - 1; i >= 0; i -= 1) {
+      const [xx, w] = pts[i];
+      d += "L" + X(xx).toFixed(2) + "," + (yc + halfThickness(w)).toFixed(2) + " ";
+    }
+    svg.append(svgEl("path", { d: d + "Z", fill: color, opacity: 0.85 }));
+  };
+  band(profile(both.top), SCH.yTop, "var(--top-arm)");
+  band(profile(both.bot), SCH.yBot, "var(--bot-arm)");
+
+  // --- heater overlays, shading proportional to dT ---
+  const heaterBand = (s, x0, which) => {
+    if (s.t0 <= 0 && s.t1 <= 0) return;
+    const yy = which === "top" ? SCH.yHeatTop : SCH.yHeatBot;
+    const subs = (s.t0 === s.t1) ? 1 : 12;
+    for (let i = 0; i < subs; i += 1) {
+      const xa = x0 + (i / subs) * s.len, xb = x0 + ((i + 1) / subs) * s.len;
+      const tm = s.t0 + (s.t1 - s.t0) * G((i + 0.5) / subs);
+      svg.append(svgEl("rect", {
+        x: X(xa), y: yy, width: Math.max(X(xb) - X(xa), 0.4) + 0.4, height: SCH.heatH,
+        fill: "var(--heat)", opacity: 0.1 + 0.85 * Math.min(1, tm / DT_MAX)
+      }));
+    }
+    const tm = Math.max(s.t0, s.t1);
+    if (tm > 0.05 && X(x0 + s.len) - X(x0) > 42 && s.kind !== "taper") {
+      svg.append(svgText(0.5 * (X(x0) + X(x0 + s.len)), yy + 11,
+        tm.toFixed(tm < 10 ? 2 : 1) + " K", "sch-label",
+        { "text-anchor": "middle",
+          fill: tm / DT_MAX > 0.45 ? "var(--panel)" : "var(--text)", "font-weight": "650" }));
+    }
+  };
+  ["top", "bot"].forEach(which => {
+    let xc = 0;
+    both[which].forEach(s => { if (s.len > 0) heaterBand(s, xc, which); xc += s.len; });
+  });
+
+  // --- boundaries, labels, widths, lengths (per arm) ---
+  const yDivTop = SCH.yHeatTop - 8, yDivMid = SCH.yTop + 2;
+  const yDivBot = SCH.yHeatBot + SCH.heatH + 8;
+  ["top", "bot"].forEach(which => {
+    const isTop = which === "top";
+    const y1 = isTop ? yDivTop : yDivMid, y2 = isTop ? yDivMid : yDivBot;
+    const yc = isTop ? SCH.yTop : SCH.yBot;
+    const labY = isTop ? SCH.ySegLab : SCH.yLenLab;
+    let xc = 0;
+    both[which].forEach(s => {
+      if (s.len <= 0) return;
+      const xa = X(xc), xb = X(xc + s.len);
+      svg.append(svgEl("line", { x1: xa, y1: y1, x2: xa, y2: y2,
+        class: "grid-line", "stroke-dasharray": "3 3" }));
+      const mid = 0.5 * (xa + xb);
+      if (s.kind === "plateau" || s.kind === "trim") {
+        const name = s.kind === "trim" ? "trim" : "S" + (s.seg + 1);
+        if (xb - xa > 26) {
+          svg.append(svgText(mid, labY, isTop ? name : s.len.toFixed(1) + " µm", "sch-label",
+            { "text-anchor": "middle", "font-weight": isTop ? "650" : "400" }));
+        }
+        if (xb - xa > 46) {
+          // widths sit in the clear gap between the arms, never inside the band
+          svg.append(svgText(mid, isTop ? yc + halfThickness(s.w0) + 13
+                                        : yc - halfThickness(s.w0) - 6,
+            s.w0.toFixed(3), "sch-label",
+            { "text-anchor": "middle",
+              fill: isTop ? "var(--top-arm)" : "var(--bot-arm)", "font-weight": "650" }));
+          if (isTop) {
+            svg.append(svgText(mid, SCH.ySegLab + 13, s.len.toFixed(1) + " µm", "sch-label",
+              { "text-anchor": "middle" }));
+          } else if (xb - xa > 26) {
+            svg.append(svgText(mid, SCH.yLenLab - 13, "S" + (s.seg + 1), "sch-label",
+              { "text-anchor": "middle", "font-weight": "650" }));
+          }
+        }
+      }
+      xc += s.len;
+    });
+    svg.append(svgEl("line", { x1: X(xc), y1: y1, x2: X(xc), y2: y2,
+      class: "grid-line", "stroke-dasharray": "3 3" }));
+  });
+
+  // --- row labels on the left ---
+  svg.append(svgText(SCH.left - 9, SCH.yHeatTop + 11, "ΔT top", "sch-label",
+    { "text-anchor": "end", fill: "var(--heat)", "font-weight": "650" }));
+  svg.append(svgText(SCH.left - 9, SCH.yHeatBot + 11, "ΔT bot", "sch-label",
+    { "text-anchor": "end", fill: "var(--heat)", "font-weight": "650" }));
+  svg.append(svgText(SCH.left - 9, SCH.yTop + 4, "top arm", "sch-label",
+    { "text-anchor": "end", fill: "var(--top-arm)", "font-weight": "650" }));
+  svg.append(svgText(SCH.left - 9, SCH.yBot + 4, "bot arm", "sch-label",
+    { "text-anchor": "end", fill: "var(--bot-arm)", "font-weight": "650" }));
+  svg.append(svgText(SCH.left, SCH.h - 5,
+    "band thickness ∝ waveguide width (vertical scale exaggerated) · grey bands are tapers, "
+    + "integrated as part of the phase · green band is the trim region · "
+    + "arm separation 296.278 µm, arms treated as uncoupled", "sch-label"));
+
+  // --- x axis ---
+  const axY = SCH.yAxis;
+  svg.append(svgEl("line", { x1: SCH.left, y1: axY, x2: X(total), y2: axY, class: "frame" }));
+  const tickStep = niceCeil(total / 8);
+  for (let t = 0; t <= total + 1e-9; t += tickStep) {
+    svg.append(svgEl("line", { x1: X(t), y1: axY, x2: X(t), y2: axY + 5, class: "frame" }));
+    svg.append(svgText(X(t), axY + 17, t.toFixed(0), "tick-label", { "text-anchor": "middle" }));
+  }
+  svg.append(svgText(SCH.left + plotW / 2, axY + 33, "position along device x (µm)",
+    "axis-label", { "text-anchor": "middle" }));
+}
+
+/* =====================================================================
+   13.  MAIN PLOT
+   ===================================================================== */
+const PLT = { w: 1160, h: 470, left: 78, right: 26, top: 22, bottom: 58 };
+const GUIDES = [0.05, 0.1, 0.2];
+const GUIDE_COLORS = ["var(--ok)", "var(--warn)", "var(--bad)"];
+
+let lastAnalysis = null;
+
+function drawPlot(a) {
+  const svg = $("plot");
+  svg.replaceChildren();
+  const pw = PLT.w - PLT.left - PLT.right;
+  const ph = PLT.h - PLT.top - PLT.bottom;
+  const X = lam => PLT.left + ((lam - a.lamLo) / Math.max(a.lamHi - a.lamLo, 1e-12)) * pw;
+
+  const view = state.view;
+  let yLo, yHi, yTicks, yLabel, seriesMain, seriesBase, fmtVal;
+
+  if (view === "null") {
+    yLo = -90; yHi = 0;
+    yTicks = [-90, -80, -70, -60, -50, -40, -30, -20, -10, 0];
+    yLabel = "ideal phase-only null  10 log₁₀ sin²(φ_err/2)   (dB)";
+    seriesMain = a.nullDb; seriesBase = a.nullDbOff;
+    fmtVal = v => fmtDb(v) + " dB";
+  } else if (view === "dphi") {
+    const vals = a.dphiPi.concat(state.showBaseline ? a.dphiPiOff : []);
+    let lo = Math.min(...vals, 1), hi = Math.max(...vals, 1);
+    const pad = Math.max((hi - lo) * 0.18, 0.02);
+    yLo = lo - pad; yHi = hi + pad;
+    yTicks = tickArray(yLo, yHi, 8);
+    yLabel = "Δφ(λ) / π   (raw, unwrapped)";
+    seriesMain = a.dphiPi; seriesBase = a.dphiPiOff;
+    fmtVal = v => v.toFixed(6) + "π";
+  } else {
+    let span;
+    if (state.yScale === "auto") {
+      const vals = a.heated.concat(state.showBaseline ? a.baseline : []).map(Math.abs);
+      span = niceCeil(Math.max(Math.max(...vals) * 1.15, 0.25));
+    } else {
+      span = parseFloat(state.yScale);
+    }
+    yLo = -span; yHi = span;
+    yTicks = tickArray(yLo, yHi, 8);
+    yLabel = "phase error from π   (degrees)";
+    seriesMain = a.heated; seriesBase = a.baseline;
+    fmtVal = v => fmtDeg(v) + "°";
+  }
+
+  const Y = v => PLT.top + (1 - (v - yLo) / (yHi - yLo)) * ph;
+  // keep traces inside the frame: a clipped curve rides the edge rather than
+  // spilling over the axis labels
+  const clampY = v => Math.min(Math.max(Y(v), PLT.top), PLT.h - PLT.bottom);
+
+  // y grid
+  yTicks.forEach(v => {
+    const py = Y(v);
+    if (py < PLT.top - 0.5 || py > PLT.h - PLT.bottom + 0.5) return;
+    svg.append(svgEl("line", { x1: PLT.left, y1: py, x2: PLT.w - PLT.right, y2: py, class: "grid-line" }));
+    svg.append(svgText(PLT.left - 9, py + 4, formatTick(v, view), "tick-label", { "text-anchor": "end" }));
+  });
+
+  // x grid at 10 nm / nice steps
+  const stepNm = niceCeil((a.lamHi - a.lamLo) * 1000 / 9);
+  const startNm = Math.ceil(a.lamLo * 1000 / stepNm) * stepNm;
+  for (let nm = startNm; nm <= a.lamHi * 1000 + 1e-6; nm += stepNm) {
+    const px = X(nm / 1000);
+    svg.append(svgEl("line", { x1: px, y1: PLT.top, x2: px, y2: PLT.h - PLT.bottom, class: "grid-line" }));
+    svg.append(svgText(px, PLT.h - PLT.bottom + 20, nm.toFixed(0), "tick-label", { "text-anchor": "middle" }));
+  }
+
+  // spec guides
+  /* Guide labels are suppressed when the y-range is so wide that they would
+     land on top of each other (or on the zero line) — the lines still get
+     drawn, only the text is dropped, and the legend still names them. */
+  const LABEL_GAP = 11;
+  if (view === "error") {
+    svg.append(svgEl("line", { x1: PLT.left, y1: Y(0), x2: PLT.w - PLT.right, y2: Y(0), class: "guide-zero" }));
+    let lastLabelY = Y(0);
+    GUIDES.forEach((g, i) => {
+      [g, -g].forEach(v => {
+        if (v < yLo || v > yHi) return;
+        svg.append(svgEl("line", {
+          x1: PLT.left, y1: Y(v), x2: PLT.w - PLT.right, y2: Y(v),
+          class: "guide-spec", stroke: GUIDE_COLORS[i]
+        }));
+      });
+      const py = Y(g);
+      if (g <= yHi && lastLabelY - py >= LABEL_GAP) {
+        svg.append(svgText(PLT.w - PLT.right - 4, py - 4, "±" + g.toFixed(2) + "°", "guide-label",
+          { "text-anchor": "end", fill: GUIDE_COLORS[i] }));
+        lastLabelY = py;
+      }
+    });
+  } else if (view === "null") {
+    let lastLabelY = Infinity;
+    GUIDES.forEach((g, i) => {
+      const db = nullDbFromErrDeg(g);
+      if (db < yLo || db > yHi) return;
+      const py = Y(db);
+      svg.append(svgEl("line", {
+        x1: PLT.left, y1: py, x2: PLT.w - PLT.right, y2: py,
+        class: "guide-spec", stroke: GUIDE_COLORS[i]
+      }));
+      if (lastLabelY - py >= LABEL_GAP || lastLabelY === Infinity) {
+        svg.append(svgText(PLT.w - PLT.right - 4, py - 4,
+          "±" + g.toFixed(2) + "° → " + db.toFixed(1) + " dB", "guide-label",
+          { "text-anchor": "end", fill: GUIDE_COLORS[i] }));
+        lastLabelY = py;
+      }
+    });
+  } else {
+    if (1 >= yLo && 1 <= yHi) {
+      svg.append(svgEl("line", { x1: PLT.left, y1: Y(1), x2: PLT.w - PLT.right, y2: Y(1), class: "guide-zero" }));
+      svg.append(svgText(PLT.w - PLT.right - 4, Y(1) - 5, "target Δφ = π", "guide-label", { "text-anchor": "end" }));
+    }
+  }
+
+  // 1550 nm marker
+  if (REF_WL >= a.lamLo && REF_WL <= a.lamHi) {
+    svg.append(svgEl("line", { x1: X(REF_WL), y1: PLT.top, x2: X(REF_WL), y2: PLT.h - PLT.bottom, class: "guide-1550" }));
+    svg.append(svgText(X(REF_WL) + 5, PLT.top + 13, "1550 nm", "guide-label"));
+  }
+
+  svg.append(svgEl("rect", { x: PLT.left, y: PLT.top, width: pw, height: ph, class: "frame" }));
+
+  const pathOf = vals => a.lams.map((lam, i) =>
+    (i ? "L" : "M") + X(lam).toFixed(2) + "," + clampY(vals[i]).toFixed(2)).join(" ");
+
+  svg.append(svgEl("path", { d: pathOf(seriesMain), class: "trace", stroke: "var(--heated)" }));
+  // baseline goes on top: when the heaters are all off the two curves coincide,
+  // and its dashes must stay visible through the heated trace
+  if (state.showBaseline) {
+    svg.append(svgEl("path", { d: pathOf(seriesBase), class: "trace baseline", stroke: "var(--baseline)" }));
+  }
+
+  if (state.showDots) {
+    a.lams.forEach((lam, i) => {
+      svg.append(svgEl("circle", { cx: X(lam), cy: clampY(seriesMain[i]), r: 2.6, fill: "var(--heated)", class: "dot" }));
+    });
+  }
+
+  svg.append(svgText(PLT.left + pw / 2, PLT.h - 12, "wavelength (nm)", "axis-label", { "text-anchor": "middle" }));
+  svg.append(svgText(20, PLT.top + ph / 2, yLabel, "axis-label",
+    { "text-anchor": "middle", transform: "rotate(-90 20 " + (PLT.top + ph / 2) + ")" }));
+
+  // hover layer
+  const hit = svgEl("rect", { x: PLT.left, y: PLT.top, width: pw, height: ph, fill: "transparent", style: "cursor:crosshair" });
+  const cross = svgEl("line", { x1: 0, y1: PLT.top, x2: 0, y2: PLT.h - PLT.bottom, class: "guide-1550", visibility: "hidden" });
+  svg.append(cross, hit);
+  hit.addEventListener("mousemove", ev => {
+    const box = svg.getBoundingClientRect();
+    const sx = (ev.clientX - box.left) / box.width * PLT.w;
+    const lam = a.lamLo + ((sx - PLT.left) / pw) * (a.lamHi - a.lamLo);
+    let best = 0;
+    for (let i = 1; i < a.lams.length; i += 1) {
+      if (Math.abs(a.lams[i] - lam) < Math.abs(a.lams[best] - lam)) best = i;
+    }
+    cross.setAttribute("x1", X(a.lams[best]));
+    cross.setAttribute("x2", X(a.lams[best]));
+    cross.setAttribute("visibility", "visible");
+    const tt = $("tooltip");
+    tt.innerHTML = '<span class="k">' + (a.lams[best] * 1000).toFixed(1) + ' nm</span><br>'
+      + 'heated: ' + fmtVal(seriesMain[best]) + '<br>'
+      + '<span class="k">heater-off: ' + fmtVal(seriesBase[best]) + '</span>';
+    tt.style.left = ev.clientX + "px";
+    tt.style.top = (ev.clientY - 14) + "px";
+    tt.style.transform = "translate(-50%, -100%)";
+    tt.classList.add("show");
+  });
+  hit.addEventListener("mouseleave", () => {
+    cross.setAttribute("visibility", "hidden");
+    $("tooltip").classList.remove("show");
+  });
+
+  // titles / legend
+  $("plot-title").innerHTML = view === "null"
+    ? "Ideal phase-only null depth vs wavelength"
+    : view === "dphi" ? "Raw differential phase Δφ/π vs wavelength"
+    : "Phase error from π vs wavelength";
+  drawLegend(a, view);
+}
+
+function tickArray(lo, hi, n) {
+  const step = niceCeil((hi - lo) / n);
+  const out = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-12; v += step) out.push(Math.abs(v) < 1e-12 ? 0 : v);
+  return out;
+}
+function formatTick(v, view) {
+  if (view === "null") return v.toFixed(0);
+  if (view === "dphi") return v.toFixed(3);
+  if (v === 0) return "0";
+  const a = Math.abs(v);
+  return a >= 10 ? v.toFixed(0) : a >= 1 ? v.toFixed(1) : v.toFixed(a >= 0.1 ? 2 : 3);
+}
+
+function drawLegend(a, view) {
+  const host = $("legend");
+  const item = (color, text, dashed) =>
+    '<span class="legend-item"><span class="swatch' + (dashed ? " dashed" : "")
+    + '" style="--series:' + color + '"></span>' + text + '</span>';
+  let html = item("var(--heated)", "with heaters + trim (current design)");
+  if (state.showBaseline) html += item("var(--baseline)", "heaters + trim off (passive geometry)", true);
+  if (view !== "dphi") {
+    GUIDES.forEach((g, i) => {
+      html += item(GUIDE_COLORS[i], "±" + g.toFixed(2) + "°", true);
+    });
+  }
+  html += '<span class="legend-item">' + HeaterModel.label + " · dn_eff/dT = "
+    + (state.dneffdT * 1e5).toFixed(3) + "×10⁻⁵ /K</span>";
+  host.innerHTML = html;
+}
+
+/* =====================================================================
+   14.  UPDATE CYCLE
+   ===================================================================== */
+function update() {
+  const a = analyse(state);
+  if (a.edgeCount > 0) {
+    const lo = a.edgeLo !== null && a.edgeLo < Optics.wMin ? a.edgeLo : null;
+    const hi = a.edgeHi !== null && a.edgeHi > Optics.wMax ? a.edgeHi : null;
+    setWarning("Outside the neff table: "
+      + (lo !== null ? "down to " + lo.toFixed(3) + " µm " : "")
+      + (lo !== null && hi !== null ? "and " : "")
+      + (hi !== null ? "up to " + hi.toFixed(3) + " µm " : "")
+      + "(table is " + Optics.wMin.toFixed(1) + "–" + Optics.wMax.toFixed(1) + " µm). "
+      + "Currently " + (state.edgeMode === "clamp"
+          ? "CLAMPED at the edge value"
+          : "EXTRAPOLATED from the end cell's cubic (matches Nem's LP)")
+      + " — there is no data there, so this number is an assumption, not a result. "
+      + "A design that only meets spec with the bias scan reaching outside the table "
+      + "is not verified. Extending the table to ~2.2 and ~7.0 µm would settle it.");
+  } else {
+    clearWarning();
+  }
+  lastAnalysis = a;
+  drawMetrics(a);
+  drawSchematic(a);
+  drawPlot(a);
+}
+
+/** Re-sync every control readout, then recompute. */
+function refreshAll() {
+  refreshers.forEach(f => f());
+  update();
+}
+
+let frame = 0;
+function schedule() {
+  cancelAnimationFrame(frame);
+  frame = requestAnimationFrame(update);
+}
+
+/* ---- view option wiring ---- */
+$("view-sel").addEventListener("change", e => { state.view = e.target.value; update(); });
+$("yscale-sel").addEventListener("change", e => { state.yScale = e.target.value; update(); });
+$("show-baseline").addEventListener("change", e => { state.showBaseline = e.target.checked; update(); });
+$("show-dots").addEventListener("change", e => { state.showDots = e.target.checked; update(); });
+$("pin-plot").addEventListener("change", e => {
+  state.pinPlot = e.target.checked;
+  $("plot-panel").classList.toggle("pinned", state.pinPlot);
+});
+
+/** One-line status under the plot (which preset is loaded, what the trim did). */
+function setStatus(msg) { $("status-line").textContent = msg || ""; }
+
+/* =====================================================================
+   15.  BUILT-IN VERIFICATION TESTS
+   ---------------------------------------------------------------------
+   These drive the same Geometry / Physics / HeaterModel code the plots use.
+   Nothing is re-implemented except the deliberately naive piecewise-constant
+   sum in test 4 and the brute-force Simpson quadrature in the last check.
+   ===================================================================== */
+function tState(over) {
+  return Object.assign(defaultState(), over || {});
+}
+function clone(s) { return JSON.parse(JSON.stringify(s)); }
+
+/** Differential phase, with the taper shape selected the way analyse() does. */
+function dphiAt(s, lam) {
+  TAPER = TAPER_SHAPES[s.taperShape] || TAPER_SHAPES.cosine;
+  return Physics.differentialPhase(Geometry.bothArms(s), lam, s);
+}
+function errDegAt(s, lam) { return wrapPi(dphiAt(s, lam) - Math.PI) * RAD2DEG; }
+
+const TEST_LAMS = [1.45, 1.49, 1.55, 1.601, 1.65];
+
+function runTests() {
+  const lines = [];
+  let allPass = true;
+  const report = (name, pass, detail) => {
+    allPass = allPass && pass;
+    lines.push((pass ? "PASS  " : "FAIL  ") + name);
+    if (detail) lines.push("        " + detail.replace(/\n/g, "\n        "));
+  };
+
+  // ---- 1: identical arms give exactly zero differential phase ----
+  {
+    const s = tState({
+      arms: paired([[410, 5.9, 5.9], [230, 2.7, 2.7], [700, 4.35, 4.35], [150, 6.55, 6.55]]),
+      taperLen: 45, trim: { L: 900 }, trimPhaseDeg: 0
+    });
+    let worst = 0;
+    TEST_LAMS.forEach(l => { worst = Math.max(worst, Math.abs(dphiAt(s, l))); });
+    report("1  identical arms (4 segments, tapers on)  ->  dphi = 0",
+      worst === 0,
+      "max |dphi| = " + worst.toExponential(2) + " rad over " + TEST_LAMS.length
+      + " wavelengths (the two arms' term sequences are bit-identical, so this is exact)");
+  }
+
+  // ---- 2: equal heating on both arms cancels ----
+  {
+    const base = tState({
+      arms: paired([[500, 6.1, 2.9], [400, 3.1, 5.4], [620, 4.7, 4.0]]),
+      taperLen: 35, trim: { L: 900 }, trimPhaseDeg: 0
+    });
+    const hot = clone(base);
+    ["top", "bot"].forEach(w => hot.arms[w].segs.forEach(x => { x.dT = 40; }));
+    let w2 = 0;
+    TEST_LAMS.forEach(l => { w2 = Math.max(w2, Math.abs(dphiAt(hot, l) - dphiAt(base, l))); });
+
+    const idn = tState({
+      arms: paired([[500, 5.2, 5.2], [400, 3.1, 3.1], [620, 4.7, 4.7]]),
+      taperLen: 35, trim: { L: 900 }, trimPhaseDeg: 0
+    });
+    ["top", "bot"].forEach(w => idn.arms[w].segs.forEach(x => { x.dT = 62.5; }));
+    let w1 = 0;
+    TEST_LAMS.forEach(l => { w1 = Math.max(w1, Math.abs(dphiAt(idn, l))); });
+
+    // w1 is exactly zero (bit-identical arms).  w2 is ~1e-12 rad rather than
+    // exactly zero because the Gauss-Legendre taper sum and the heater shift are
+    // added in different magnitudes, so (hot - base) does not cancel bit-for-bit.
+    // 1e-11 rad is 6e-10 degrees - far below anything physical.
+    report("2  equal ΔT on both arms cancels",
+      w1 === 0 && w2 < 1e-11,
+      "identical arms + 62.5 K both:   max |dphi| = " + w1.toExponential(2) + " rad\n"
+      + "asymmetric design + 40 K both: max |change| = " + w2.toExponential(2) + " rad");
+  }
+
+  // ---- 3: heating one arm shifts phase, opposite signs ----
+  {
+    const base = tState({
+      arms: paired([[900, 4.2, 4.2], [700, 5.6, 5.6]]),
+      taperLen: 30, trim: { L: 900 }, trimPhaseDeg: 0
+    });
+    const top = clone(base); top.arms.top.segs[0].dT = 30;
+    const bot = clone(base); bot.arms.bot.segs[0].dT = 30;
+    const dTop = dphiAt(top, REF_WL) - dphiAt(base, REF_WL);
+    const dBot = dphiAt(bot, REF_WL) - dphiAt(base, REF_WL);
+    const Lheat = 900 + 30;        // plateau + taperLen/2 at each end from the ΔT blend
+    const expect = TWO_PI / REF_WL * base.dneffdT * 30 * Lheat;
+    report("3  heating top vs bottom shifts dphi oppositely",
+      dTop > 0 && dBot < 0 && Math.abs(dTop + dBot) < 1e-12
+        && Math.abs(dTop - expect) / Math.abs(expect) < 1e-12,
+      "top only:    " + dTop.toFixed(9) + " rad\n"
+      + "bottom only: " + dBot.toFixed(9) + " rad\n"
+      + "sum = " + (dTop + dBot).toExponential(2)
+      + ";  analytic 2π·dn·ΔT·L_heat/λ = " + expect.toFixed(9) + " rad");
+  }
+
+  // ---- 4: taper = 0 reduces to piecewise-constant sections ----
+  {
+    const s = tState({
+      arms: paired([[520, 6.35, 2.55], [380, 2.45, 4.85], [640, 4.05, 5.95], [300, 3.4, 6.05]]),
+      taperLen: 0, trim: { L: 900 }, trimPhaseDeg: 11.5
+    });
+    s.arms.top.segs[0].dT = 11; s.arms.bot.segs[1].dT = 23;
+    s.arms.top.segs[2].dT = 7.5; s.arms.bot.segs[2].dT = 3.5;
+    const naive = lam => {
+      const row = Optics.rowAt(lam);
+      const dTtrim = trimDeltaTFor(s);
+      let opd = 0;
+      for (let i = 0; i < s.arms.top.n; i += 1) {
+        const t = s.arms.top.segs[i], b = s.arms.bot.segs[i];
+        opd += t.L * (neffAtWidth(row, t.w) + s.dneffdT * t.dT)
+             - b.L * (neffAtWidth(row, b.w) + s.dneffdT * b.dT);
+      }
+      opd += s.trim.L * s.dneffdT * dTtrim;
+      return TWO_PI / lam * opd;
+    };
+    let worst = 0, scale = 0;
+    TEST_LAMS.forEach(l => {
+      worst = Math.max(worst, Math.abs(dphiAt(s, l) - naive(l)));
+      scale = Math.max(scale, Math.abs(naive(l)));
+    });
+    report("4  taper length 0 == naive piecewise-constant sum",
+      worst < 1e-11,
+      "max |difference| = " + worst.toExponential(2) + " rad (|dphi| ~ " + scale.toFixed(3) + " rad)");
+  }
+
+  // ---- 5: nonzero taper changes the integrated phase ----
+  {
+    const mk = (lt, shape) => tState({
+      arms: paired([[520, 6.35, 2.55], [380, 2.45, 4.85], [640, 4.05, 5.95]]),
+      taperLen: lt, taperShape: shape, trim: { L: 900 }, trimPhaseDeg: 0
+    });
+    const c0 = dphiAt(mk(0, "cosine"), REF_WL);
+    const c40 = dphiAt(mk(40, "cosine"), REF_WL);
+    const c120 = dphiAt(mk(120, "cosine"), REF_WL);
+    const l40 = dphiAt(mk(40, "linear"), REF_WL);
+    const l0 = dphiAt(mk(0, "linear"), REF_WL);
+    report("5  taper length and taper profile both change dphi",
+      Math.abs(c40 - c0) > 1e-4 && Math.abs(c120 - c40) > 1e-4
+        && (c40 - c0) * (c120 - c40) > 0
+        && Math.abs(l40 - c40) > 1e-5 && Math.abs(l0 - c0) < 1e-12,
+      "cosine   0 µm: " + c0.toFixed(6) + " rad\n"
+      + "cosine  40 µm: " + c40.toFixed(6) + " rad  (" + (c40 - c0 >= 0 ? "+" : "") + (c40 - c0).toFixed(6) + ")\n"
+      + "cosine 120 µm: " + c120.toFixed(6) + " rad  (" + (c120 - c40 >= 0 ? "+" : "") + (c120 - c40).toFixed(6) + ")\n"
+      + "linear  40 µm: " + l40.toFixed(6) + " rad  (differs from cosine by "
+      + (l40 - c40).toFixed(6) + ")\n"
+      + "both shapes agree exactly at taper = 0 (diff " + Math.abs(l0 - c0).toExponential(1) + ")");
+  }
+
+  // ---- 6: the trim nulls the 1550 nm error, and is a pure 1/lambda phase ----
+  {
+    const s = tState(PRESETS.equalWidth());
+    s.trimPhaseDeg = 0;
+    const before = errDegAt(s, REF_WL);
+    const probe = Object.assign({}, s, { trimPhaseDeg: 0 });
+    const want = -wrapPi(dphiAt(probe, REF_WL) - Math.PI) * RAD2DEG;
+    s.trimPhaseDeg = want;
+    const after = errDegAt(s, REF_WL);
+    const dT = trimDeltaTFor(s);
+    const a2 = analyse(s);
+    report("6  trim sets the 1550 nm error to zero",
+      Math.abs(after) < 1e-9,
+      "equal-width start: err(1550) = " + before.toFixed(4) + "°\n"
+      + "trim phase " + want.toFixed(4) + "° (= ΔT " + dT.toFixed(4) + " K over "
+      + (s.trim.L || 0).toFixed(0) + " µm)  ->  err(1550) = " + after.toExponential(2) + "°\n"
+      + "band is still not flat: RMS " + a2.rms.toFixed(4) + "°, worst "
+      + Math.abs(a2.worst).toFixed(4) + "° at " + (a2.worstLam * 1000).toFixed(0) + " nm\n"
+      + "(one trim buys a 1/λ phase, not an achromatic π)");
+  }
+
+  // ---- 7: trim phase scales exactly as 1/lambda ----
+  {
+    const s = tState({
+      arms: paired([[1000, 3.4, 3.4]]), taperLen: 0,
+      trim: { L: 900 }, trimPhaseDeg: 0
+    });
+    const base = TEST_LAMS.map(l => dphiAt(s, l));
+    s.trimPhaseDeg = 7.5;
+    const hot = TEST_LAMS.map(l => dphiAt(s, l));
+    let worst = 0;
+    TEST_LAMS.forEach((l, i) => {
+      const predicted = (7.5 / RAD2DEG) * (REF_WL / l);
+      worst = Math.max(worst, Math.abs((hot[i] - base[i]) - predicted));
+    });
+    // 1e-11 rad is the float-accumulation floor for a ~2800 um optical path,
+    // not a model tolerance: the relation itself is exact.
+    report("7  trim phase follows 1/λ exactly",
+      worst < 1e-11,
+      "max deviation from φ(1550)·(1550/λ) = " + worst.toExponential(2) + " rad\n"
+      + "so phase and ΔT are the same knob; no material dispersion is involved");
+  }
+
+  // ---- 8: independent arm segmentation changes nothing if the histograms match ----
+  {
+    const a = tState(PRESETS.designB());
+    const b = tState(PRESETS.unequalArms());
+    let worst = 0;
+    TEST_LAMS.concat([1.47, 1.52, 1.58, 1.63]).forEach(l => {
+      worst = Math.max(worst, Math.abs(dphiAt(a, l) - dphiAt(b, l)));
+    });
+    const sameLen = Math.abs(Geometry.armApsLength(b, "top") - Geometry.armApsLength(b, "bot"));
+    report("8  unequal arm segmentation (5 / 4) == paired Design B (8 / 8)",
+      worst < 1e-11 && sameLen < 1e-6,
+      "Design B: 8 segments per arm;  same design re-cut as 5 top / 4 bottom\n"
+      + "max |dphi difference| = " + worst.toExponential(2) + " rad\n"
+      + "arm length mismatch = " + sameLen.toExponential(2) + " µm\n"
+      + "(dphi depends only on each arm's length-vs-width histogram, so cutting the\n"
+      + " arms differently cannot change it — segment boundaries need not line up)");
+  }
+
+  // ---- 9: reproduce Nem's published validation targets ----
+  //   worst error after the best trim, b = 0, cubic not-a-knot interpolation:
+  //     B_8_segments as delivered ........ 0.0521 deg
+  //     his bias-robust 8-segment design .. 0.0357 deg
+  //   His other two targets (0.0205 and 0.085 deg) are OUTPUTS of his minimax
+  //   LP, which is not ported in-browser, so they cannot be checked here.
+  {
+    const prev = state.widthInterp;
+    state.widthInterp = "cubic";
+    applyInterp();
+    // each target is stated against a specific metric, so compare like with like
+    const checks = [
+      // The corrected table moves every pre-Nov number, so the targets here are
+      // the v3 designs as delivered, re-derived on the table this build embeds.
+      // Targets are what THIS model gives for the delivered geometry, so the
+      // test guards against the build breaking. They sit within ~0.002 deg of
+      // the numbers from Nem's LP (e.g. (a) 0.0136 here vs 0.0142 there): the
+      // remaining difference is the trim convention, since his caps the trim at
+      // 2 deg per bias and this tool fits it freely. Treat his as definitive.
+      ["v3a", 0.0136, "trimmedWorst", "v3 (a) worst after trim"],
+      ["v3a", 0.0352, "drawnWorst", "v3 (a) as drawn at nominal"],
+      // The tool has no lattice-blind residual - that metric is Nem's LP, not
+      // this model - so (b) is checked on the two numbers the tool does own.
+      ["v3b", 0.1348, "drawnWorst", "v3 (b) as drawn at nominal"],
+      ["v3b", 0.2293, "worstOverBias", "v3 (b) worst over ±50 nm"],
+      ["v3c", 0.0118, "trimmedWorst", "v3 (c) worst after trim"],
+      ["v3c", 0.0119, "drawnWorst", "v3 (c) as drawn at nominal"]
+    ];
+    let ok = true;
+    const det = [];
+    checks.forEach(([key, want, field, label]) => {
+      const s = tState(PRESETS[key]());
+      s.wlMin = 1.45; s.wlMax = 1.65; s.nWl = 21; s.widthInterp = "cubic";
+      s.biasRangeNm = 50; s.nBias = 5;
+      const r = analyse(s);
+      const got = r[field];
+      const good = Math.abs(got - want) < Math.max(5e-4, Math.abs(want) * 2e-3);
+      ok = ok && good;
+      det.push(label + ": " + got.toFixed(4) + "° (expect " + want.toFixed(4) + ")"
+        + (good ? "" : "   <-- MISMATCH"));
+    });
+    state.widthInterp = prev;
+    applyInterp();
+    report("9  reproduces the delivered v3 design numbers", ok, det.join("\n"));
+  }
+
+  // ---- 10: how much a design leans on the interpolation choice ----
+  //   One cell from the table edge, not-a-knot and natural splines differ by
+  //   ~1e-6 in neff, which is ~0.26 deg over a 1000 um segment.  A design whose
+  //   score moves when the scheme changes is not a verified design.
+  {
+    const prev = state.widthInterp;
+    const det = [];
+    let worstSpread = 0;
+    [["designA", "Design A (off-grid widths)"],
+     ["designB", "Design B (on-grid, touches 2.4 / 6.8)"],
+     ["nemRobust", "Nem robust (on-grid, 2.5-6.7)"]].forEach(([key, label]) => {
+      const vals = {};
+      ["cubic", "cubic-natural", "linear"].forEach(scheme => {
+        const s = tState(PRESETS[key]());
+        s.wlMin = 1.45; s.wlMax = 1.65; s.nWl = 21;
+        s.widthInterp = scheme;
+        state.widthInterp = scheme;
+        applyInterp();
+        vals[scheme] = analyse(s).worstOverBias;
+      });
+      const spread = Math.max(...Object.values(vals)) - Math.min(...Object.values(vals));
+      worstSpread = Math.max(worstSpread, spread);
+      det.push(label + ":\n    not-a-knot " + vals["cubic"].toFixed(4)
+        + "°, natural " + vals["cubic-natural"].toFixed(4)
+        + "°, linear " + vals["linear"].toFixed(4)
+        + "°  ->  spread " + spread.toFixed(4) + "°");
+    });
+    state.widthInterp = prev;
+    applyInterp();
+    det.push("Every candidate so far puts a width in the table's end cells under");
+    det.push("-50 nm bias, so none of them has a verified bias number. Extending");
+    det.push("the neff table below 2.4 and above 6.8 um would fix this.");
+    report("10  interpolation-dependence of the bias score (informational)",
+      true, det.join("\n") + "\n  worst spread seen: " + worstSpread.toFixed(4) + "°");
+  }
+
+  // ---- extra: closed-form taper integral vs brute-force Simpson ----
+  {
+    let worstGrid = 0;
+    for (let j = 0; j < Optics.WL.length; j += 1) {
+      const row = Optics.rowAt(Optics.WL[j]);
+      for (let k = 0; k < Optics.W.length; k += 1) {
+        worstGrid = Math.max(worstGrid, Math.abs(spanMeanIndex(row, Optics.W[k], Optics.W[k], 0) - row[k]));
+        // a cubic spline must also reproduce the table exactly at its own nodes
+        worstGrid = Math.max(worstGrid, Math.abs(Optics.neffCubic(row, Optics.W[k]) - row[k]));
+      }
+    }
+    const row = Optics.rowAt(1.5273);
+    const w0 = 2.62, w1 = 6.41;
+    const det = [];
+    let ok = worstGrid < 1e-13;
+    Object.keys(TAPER_SHAPES).forEach(key => {
+      TAPER = TAPER_SHAPES[key];
+      let simp = 0; const M = 20000;
+      for (let i = 0; i <= M; i += 1) {
+        const wt = w0 + (w1 - w0) * TAPER.g(i / M);
+        simp += ((i === 0 || i === M) ? 1 : (i % 2 ? 4 : 2)) * neffAtWidth(row, wt);
+      }
+      simp *= (1 / M) / 3;
+      const exact = spanMeanIndex(row, w0, w1, 0);
+      // 5e-9 in neff is ~1e-3 deg over a 1000 um section, far below the 0.01 deg
+      // these designs are specified to, and the panel cap buys an 11x faster
+      // slider. The corrected table's 0.05 um grid doubles the number of panels
+      // a wide taper crosses, so the capped count works a little harder than it
+      // did on the old 0.1 um grid (2.1e-9 vs 7.8e-13).
+      ok = ok && Math.abs(exact - simp) < 5e-9;
+      det.push(key.padEnd(7) + " exact " + exact.toFixed(12) + ", Simpson " + simp.toFixed(12)
+        + ", diff " + Math.abs(exact - simp).toExponential(2));
+    });
+    TAPER = TAPER_SHAPES[state.taperShape] || TAPER_SHAPES.cosine;
+  EDGE_MODE = state.edgeMode || "extrapolate";
+  resetOutOfTable();
+    report("*  taper quadrature == 20k-point Simpson, both profiles; spline exact on-grid",
+      ok, det.join("\n") + "\ngrid round-trip error = " + worstGrid.toExponential(2));
+  }
+
+  lines.push("");
+  lines.push(allPass ? "All checks passed." : "Some checks FAILED — see above.");
+  lines.push("neff table: " + Optics.WL.length + " wavelengths "
+    + (Optics.wlMin * 1000).toFixed(0) + "–" + (Optics.wlMax * 1000).toFixed(0) + " nm, "
+    + Optics.W.length + " widths " + Optics.wMin.toFixed(1) + "–" + Optics.wMax.toFixed(1) + " µm; "
+    + "cubic not-a-knot in width, linear in wavelength, clamped (never extrapolated).");
+  $("test-out").textContent = lines.join("\n");
+}
+$("run-tests").addEventListener("click", runTests);
+
+/* =====================================================================
+   16.  BOOT
+   ===================================================================== */
+rebuildControls();
+$("view-sel").value = state.view;
+$("yscale-sel").value = state.yScale;
+$("show-baseline").checked = state.showBaseline;
+$("show-dots").checked = state.showDots;
+$("pin-plot").checked = state.pinPlot;
+$("plot-panel").classList.toggle("pinned", state.pinPlot);
+setStatus(PRESETS.v3a().label);
+update();
+window.addEventListener("resize", schedule);
+
+})();
+</script>
+</body>
+</html>

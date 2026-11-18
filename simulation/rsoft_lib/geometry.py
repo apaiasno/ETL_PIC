@@ -7,7 +7,7 @@ independent GDS reader and writer.
 
 Contents (in this order)
     Path utilities      bend_curvature, parallel_path, path_list, eval_width
-    Circular S-bends    sbend_lengths, sidestep_offset, sidestep_straight, sidestep_angle
+    Circular S-bends    sbend_lengths, sidestep_offset, sidestep_straight, sidestep_angle, circular_sidestep
     Euler S-bends       euler_sbend, euler_ramp_length, euler_sbend_from_ramp, euler_sbend_fixed_ramp
     Structures          delay_arm_parameters, delay_arm, euler_wave
     Widths              raised_cosine, cosine_tapers
@@ -137,17 +137,89 @@ def sbend_lengths(R, d, junction_offset=0.0, straight_offset=0.0):
     return 2 * R * theta, 2 * R * np.sin(theta), theta
 
 
-def sidestep_offset(radius, angle_deg, straight, junction_offset=0.0):
-    """Lateral displacement (um) of two arcs of `radius` turning by `angle_deg`, joined by a tilted straight of
-    length `straight`: 2 R (1 - cos a) + L sin a + 2 junction_offset (the offset applied at each end)."""
-    a = np.radians(angle_deg)
-    return 2 * radius * (1 - np.cos(a)) + straight * np.sin(a) + 2 * junction_offset
+def _arc_shift(radius, a0, a1):
+    """(dx, dz) of a circular arc of this radius from heading a0 to heading a1 (radians, from +z toward +x)."""
+    if abs(a1 - a0) < 1e-15:
+        return 0.0, 0.0
+    s = 1.0 if a1 > a0 else -1.0
+    return s * radius * (np.cos(a0) - np.cos(a1)), s * radius * (np.sin(a1) - np.sin(a0))
 
 
-def sidestep_straight(radius, offset, angle_deg, junction_offset=0.0):
-    """Length of the tilted straight (um) that gives the lateral displacement `offset` for arcs turning by `angle_deg`."""
+def sidestep_offset(radius, angle_deg, straight, junction_offset=0.0, start_angle=0.0, end_angle=0.0, radius2=None):
+    """Lateral displacement (um) of an arc of `radius` from start_angle to angle_deg, a straight of length `straight` at angle_deg,
+    and an arc of radius2 (default radius) from angle_deg to end_angle (degrees from +z toward the step), plus 2 junction_offset
+    (the offset applied at each end). With the default angles: 2 R (1 - cos a) + L sin a + 2 junction_offset."""
+    a, a0, a1 = np.radians(angle_deg), np.radians(start_angle), np.radians(end_angle)
+    r2 = radius if radius2 is None else radius2
+    return _arc_shift(radius, a0, a)[0] + straight * np.sin(a) + _arc_shift(r2, a, a1)[0] + 2 * junction_offset
+
+
+def sidestep_straight(radius, offset, angle_deg, junction_offset=0.0, start_angle=0.0, end_angle=0.0, radius2=None):
+    """Length of the tilted straight (um) that gives the lateral displacement `offset` for arcs from start_angle to angle_deg and
+    from angle_deg to end_angle (see sidestep_offset)."""
     a = np.radians(angle_deg)
-    return (offset - 2 * junction_offset - 2 * radius * (1 - np.cos(a))) / np.sin(a)
+    return (offset - sidestep_offset(radius, angle_deg, 0.0, junction_offset, start_angle, end_angle, radius2)) / np.sin(a)
+
+
+def circular_sidestep(R, angle_deg, offset=None, straight=None, ds=1.0, x0=0.0, direction=1, return_params=False,
+                      start_angle=0.0, end_angle=0.0, R2=None):
+    """Circular side-step: an arc of radius R from start_angle to angle_deg, a straight at angle_deg, and an arc of radius R2
+    (default R) from angle_deg to end_angle; the counterpart of euler_sidestep, with the same arguments and outputs.
+
+    Angles in degrees from +z toward the direction of the step (toward +x for direction=1, toward -x for direction=-1).
+    Give either offset (the lateral displacement from start to end, um; the straight gets the length that reaches it) or straight
+    (its length, um); an offset the arcs alone already pass raises ValueError.
+    Returns x, z, phi sampled every ds um; with return_params=True also a dict: straight, offset, bend_offset and bend_z (arc 1),
+    bend2_offset and bend2_z (arc 2), z_length, path_length, angle_deg, start_angle, end_angle, bend1_end and bend2_start
+    (indices of the straight's ends), and pieces: the same side-step as exact Circuit.add_route pieces, to be drawn with
+    c.add_route(x, z, heading, params["pieces"], ...) from the start point at heading direction * start_angle (with
+    offset_wavelength there for bend offsets)."""
+    if (offset is None) == (straight is None):
+        raise ValueError("Give exactly one of offset and straight")
+    R2 = R if R2 is None else R2
+    theta, a0, a1 = np.radians(angle_deg), np.radians(start_angle), np.radians(end_angle)
+    (d1x, d1z), (d2x, d2z) = _arc_shift(R, a0, theta), _arc_shift(R2, theta, a1)
+    if straight is None:
+        if abs(np.sin(theta)) < 1e-12:
+            raise ValueError("With angle_deg = 0 the straight does not move the guide sideways: give straight instead of offset")
+        straight = (abs(offset) - d1x - d2x) / np.sin(theta)
+        if straight < -1e-9:
+            raise ValueError(f"An offset of {abs(offset):g} um is below what the two arcs alone reach ({d1x + d2x:.3f} um for "
+                             f"{start_angle:g} -> {angle_deg:g} -> {end_angle:g} deg, R {R:g} um); use a smaller angle")
+        straight = max(straight, 0.0)
+
+    def arc(radius, b0, b1, px, pz):
+        n = max(int(np.ceil(radius * abs(b1 - b0) / ds)), 1) if abs(b1 - b0) > 1e-15 else 0
+        ph = np.linspace(b0, b1, n + 1)
+        s = 1.0 if b1 >= b0 else -1.0
+        return px + s * radius * (np.cos(b0) - np.cos(ph)), pz + s * radius * (np.sin(ph) - np.sin(b0)), ph
+
+    x1, z1, p1 = arc(R, a0, theta, 0.0, 0.0)
+    m = int(np.ceil(straight / ds)) if straight > 0 else 0
+    t = np.linspace(0, straight, m + 1)[1:]
+    sx, sz = x1[-1] + t * np.sin(theta), z1[-1] + t * np.cos(theta)
+    X2, Z2 = x1[-1] + straight * np.sin(theta), z1[-1] + straight * np.cos(theta)
+    x2, z2, p2 = arc(R2, theta, a1, X2, Z2)
+    x = np.concatenate([x1, sx, x2[1:]])
+    z = np.concatenate([z1, sz, z2[1:]])
+    phi = np.concatenate([p1, np.full(m, theta), p2[1:]])
+    k = len(x1) - 1
+    s = 1.0 if direction >= 0 else -1.0
+    x, phi = x0 + s * x, s * phi
+    if not return_params:
+        return x, z, phi
+    pieces = []
+    if abs(angle_deg - start_angle) > 1e-12:
+        pieces.append(("arc", R, s * (angle_deg - start_angle)))
+    if straight > 0:
+        pieces.append(("line", straight))
+    if abs(end_angle - angle_deg) > 1e-12:
+        pieces.append(("arc", R2, s * (end_angle - angle_deg)))
+    seg = np.hypot(np.diff(x), np.diff(z)).sum()
+    return x, z, phi, dict(straight=float(straight), offset=float(X2 + d2x), bend_offset=float(d1x), bend_z=float(d1z),
+                           bend2_offset=float(d2x), bend2_z=float(d2z), z_length=float(Z2 + d2z), path_length=float(seg),
+                           angle_deg=float(angle_deg), start_angle=float(start_angle), end_angle=float(end_angle),
+                           bend1_end=int(k), bend2_start=int(k + m), pieces=pieces)
 
 
 def sidestep_angle(radius, offset, straight, junction_offset=0.0):
@@ -205,46 +277,71 @@ def euler_sbend(d, R_min, p=1.0, ds=1.0):
     return np.sign(d) * x, z, np.sign(d) * phi
 
 
-def euler_sidestep(R_min, angle_deg, p=0.5, offset=None, straight=None, ds=1.0, x0=0.0, direction=1, return_params=False):
-    """Euler side-step: an Euler bend that turns the guide by angle_deg, a straight at that angle, and the mirror-image Euler bend
-    back to z. The two bends are the halves of the partial-Euler S-bend of minimum radius R_min and Euler fraction p (each ramps
-    the curvature from 0 to 1/R_min over a clothoid, holds it, and ramps it back to 0), so they are the same for every offset,
-    and the curvature is continuous everywhere, including at both ends of the straight.
+def _euler_bend(R_min, p, phi0, phi1, ds):
+    """One partial-Euler bend from heading phi0 to heading phi1 (radians, from +z toward +x), starting at (0, 0): curvature ramps
+    from 0 to 1/R_min over a clothoid, holds, and ramps back to 0 (the half of the Euler S-bend that turns by |phi1 - phi0|).
+    Returns x, z, phi; a single point if phi1 == phi0."""
+    t = abs(phi1 - phi0)
+    if t < 1e-12:
+        return np.zeros(1), np.zeros(1), np.full(1, phi0)
+    n = max(int(np.ceil(2 * (1 + p) * t * R_min / ds)), 2)
+    n += n % 2
+    xs, zs, ps = _euler_path(R_min, p * t * R_min, (1 - p) * t * R_min, n)
+    k = n // 2
+    hx, hz, hp = xs[:k + 1], zs[:k + 1], ps[:k + 1]                 # heading 0 -> t, turning toward +x
+    if phi1 < phi0:                                                 # turning toward -x: the mirror image
+        hx, hp = -hx, -hp
+    c, s = np.cos(phi0), np.sin(phi0)                               # rotate so that it starts at heading phi0
+    return hx * c + hz * s, -hx * s + hz * c, hp + phi0
 
-    Give either offset (the lateral displacement, um; the straight gets the length that reaches it) or straight (its length, um).
-    The offset is 2 * (lateral displacement of one bend) + straight * sin(angle); an offset smaller than the bends alone reach
-    raises ValueError. direction=1 steps toward +x, -1 toward -x.
+
+def euler_sidestep(R_min, angle_deg, p=0.5, offset=None, straight=None, ds=1.0, x0=0.0, direction=1, return_params=False,
+                   start_angle=0.0, end_angle=0.0):
+    """Euler side-step: an Euler bend from start_angle to angle_deg, a straight at angle_deg, and an Euler bend from angle_deg to
+    end_angle. Each bend is half of the partial-Euler S-bend of minimum radius R_min and Euler fraction p for its own turn (it ramps
+    the curvature from 0 to 1/R_min over a clothoid, holds it, and ramps it back to 0), so for given angles the bends are the same
+    for every offset, and the curvature is continuous everywhere, including at both ends of the straight. With the default
+    start_angle = end_angle = 0 the guide starts and ends along z and the two bends are mirror images.
+
+    Angles in degrees from +z toward the direction of the step (toward +x for direction=1, toward -x for direction=-1).
+    Give either offset (the lateral displacement from start to end, um; the straight gets the length that reaches it) or straight
+    (its length, um). The offset is (lateral displacement of bend 1) + straight * sin(angle) + (that of bend 2); an offset the bends
+    alone already pass raises ValueError.
     Returns x, z, phi (z = propagation direction, phi = tangent angle from z), sampled every ds um; with return_params=True also a
-    dict: straight, offset, bend_offset and bend_z (the displacement of one bend), z_length, path_length, angle_deg,
-    bend1_end and bend2_start (indices: the first bend is [:bend1_end + 1], the second [bend2_start:])."""
+    dict: straight, offset, bend_offset and bend_z (the displacement of bend 1), bend2_offset and bend2_z (of bend 2), z_length,
+    path_length, angle_deg, start_angle, end_angle, bend1_end and bend2_start (indices: bend 1 is [:bend1_end + 1], bend 2
+    [bend2_start:])."""
     if (offset is None) == (straight is None):
         raise ValueError("Give exactly one of offset and straight")
-    theta = np.radians(angle_deg)
-    n = max(int(np.ceil(2 * (1 + p) * theta * R_min / ds)), 2)
-    n += n % 2                                                     # the inflection on a sample
-    xs, zs, ps = _euler_path(R_min, p * theta * R_min, (1 - p) * theta * R_min, n)
-    k = n // 2
-    hx, hz, hp = xs[:k + 1], zs[:k + 1], ps[:k + 1]                 # one Euler bend, heading 0 -> angle
+    theta, a0, a1 = np.radians(angle_deg), np.radians(start_angle), np.radians(end_angle)
+    b1x, b1z, b1p = _euler_bend(R_min, p, a0, theta, ds)
+    b2x, b2z, b2p = _euler_bend(R_min, p, theta, a1, ds)
     if straight is None:
-        straight = (abs(offset) - 2 * hx[-1]) / np.sin(theta)
+        if abs(np.sin(theta)) < 1e-12:
+            raise ValueError("With angle_deg = 0 the straight does not move the guide sideways: give straight instead of offset")
+        straight = (abs(offset) - b1x[-1] - b2x[-1]) / np.sin(theta)
         if straight < -1e-9:
-            raise ValueError(f"An offset of {abs(offset):g} um is below what the two Euler bends alone reach ({2 * hx[-1]:.3f} um at "
-                             f"{angle_deg:g} deg, R_min {R_min:g} um, p {p:g}); use a smaller angle")
+            raise ValueError(f"An offset of {abs(offset):g} um is below what the two Euler bends alone reach "
+                             f"({b1x[-1] + b2x[-1]:.3f} um for {start_angle:g} -> {angle_deg:g} -> {end_angle:g} deg, R_min {R_min:g} um, "
+                             f"p {p:g}); use a smaller angle")
         straight = max(straight, 0.0)
     m = int(np.ceil(straight / ds)) if straight > 0 else 0
     t = np.linspace(0, straight, m + 1)[1:]
-    sx, sz = hx[-1] + t * np.sin(theta), hz[-1] + t * np.cos(theta)
-    X, Z = 2 * hx[-1] + straight * np.sin(theta), 2 * hz[-1] + straight * np.cos(theta)
-    x = np.concatenate([hx, sx, (X - hx[::-1])[1:]])
-    z = np.concatenate([hz, sz, (Z - hz[::-1])[1:]])
-    phi = np.concatenate([hp, np.full(m, theta), hp[::-1][1:]])
+    sx, sz = b1x[-1] + t * np.sin(theta), b1z[-1] + t * np.cos(theta)
+    X2, Z2 = b1x[-1] + straight * np.sin(theta), b1z[-1] + straight * np.cos(theta)    # where bend 2 starts
+    x = np.concatenate([b1x, sx, (X2 + b2x)[1:]])
+    z = np.concatenate([b1z, sz, (Z2 + b2z)[1:]])
+    phi = np.concatenate([b1p, np.full(m, theta), b2p[1:]])
+    k = len(b1x) - 1
     s = 1.0 if direction >= 0 else -1.0
     x, phi = x0 + s * x, s * phi
     if not return_params:
         return x, z, phi
     seg = np.hypot(np.diff(x), np.diff(z)).sum()
-    return x, z, phi, dict(straight=float(straight), offset=float(X), bend_offset=float(hx[-1]), bend_z=float(hz[-1]),
-                           z_length=float(Z), path_length=float(seg), angle_deg=float(angle_deg), bend1_end=int(k), bend2_start=int(k + m))
+    return x, z, phi, dict(straight=float(straight), offset=float(X2 + b2x[-1]), bend_offset=float(b1x[-1]), bend_z=float(b1z[-1]),
+                           bend2_offset=float(b2x[-1]), bend2_z=float(b2z[-1]), z_length=float(Z2 + b2z[-1]), path_length=float(seg),
+                           angle_deg=float(angle_deg), start_angle=float(start_angle), end_angle=float(end_angle),
+                           bend1_end=int(k), bend2_start=int(k + m))
 
 
 def euler_ramp_length(d_ref, R_min, p=1.0):
