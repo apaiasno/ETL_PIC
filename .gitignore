@@ -9,6 +9,7 @@ simulation/**
 !simulation/**/
 !simulation/**/*.py
 !simulation/**/*.ipynb
+!simulation/NullingPIC_Gen2_sims/P-*/*.csv
 !simulation/NullingPIC_Gen2_sims/P-*/*.ind
 !simulation/NullingPIC_Gen2_sims/P-*/*.gds
 !simulation/NullingPIC_Gen2_sims/A1-*/*.ind

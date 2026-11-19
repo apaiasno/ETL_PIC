@@ -1,0 +1,10 @@
+boundary,taper_length_um,profile,top_from_um,top_to_um,bot_from_um,bot_to_um
+0,80.0,raised_cosine,3.40,3.20,3.40,4.35
+1,160.0,raised_cosine,3.20,6.20,4.35,3.90
+2,80.0,raised_cosine,6.20,6.45,3.90,5.05
+3,80.0,raised_cosine,6.45,6.10,5.05,4.30
+4,160.0,raised_cosine,6.10,2.95,4.30,4.80
+5,160.0,raised_cosine,2.95,3.10,4.80,2.40
+6,160.0,raised_cosine,3.10,2.90,2.40,5.00
+7,160.0,raised_cosine,2.90,2.80,5.00,2.35
+8,80.0,raised_cosine,2.80,3.40,2.35,3.40
